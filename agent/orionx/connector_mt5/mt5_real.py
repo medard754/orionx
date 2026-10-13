@@ -15,7 +15,7 @@ from functools import partial
 from typing import Any, Callable, TypeVar
 
 from orionx.core.errors import GatewayError
-from orionx.core.models import AccountState, OrderResult, Position, Side, SymbolSpec, Tick, utcnow
+from orionx.core.models import AccountState, Bar, OrderResult, Position, Side, SymbolSpec, Tick, utcnow
 
 T = TypeVar("T")
 MAGIC = 26_10_12  # identifiant des ordres ORIONX
@@ -134,6 +134,30 @@ class Mt5Gateway:
 
         return await self._run(f)
 
+    async def get_bars(self, symbol: str, timeframe: str, count: int) -> list[Bar]:
+        def f() -> list[Bar]:
+            mt5 = self._mt5
+            tf = {
+                "M1": mt5.TIMEFRAME_M1, "M5": mt5.TIMEFRAME_M5, "M15": mt5.TIMEFRAME_M15, "M30": mt5.TIMEFRAME_M30,
+                "H1": mt5.TIMEFRAME_H1, "H4": mt5.TIMEFRAME_H4, "D1": mt5.TIMEFRAME_D1,
+            }.get(timeframe)  # fmt: skip
+            if tf is None:
+                raise GatewayError(f"Unité de temps inconnue : {timeframe}")
+            self._symbol_info(symbol)
+            rates = mt5.copy_rates_from_pos(symbol, tf, 0, count + 1)
+            if rates is None or len(rates) == 0:
+                raise GatewayError(f"Aucune bougie pour {symbol} {timeframe} : {mt5.last_error()}")
+            bars = [
+                Bar(
+                    datetime.fromtimestamp(int(r["time"]), tz=timezone.utc),
+                    float(r["open"]), float(r["high"]), float(r["low"]), float(r["close"]), float(r["tick_volume"]),
+                )
+                for r in rates
+            ]  # fmt: skip
+            return bars[:-1]  # la dernière bougie est encore en formation
+
+        return await self._run(f)
+
     async def get_positions(self) -> list[Position]:
         def f() -> list[Position]:
             rows = self._mt5.positions_get() or ()
@@ -223,7 +247,7 @@ class Mt5Gateway:
 
         return await self._run(f)
 
-    async def close_position(self, ticket: int) -> OrderResult:
+    async def close_position(self, ticket: int, volume: float | None = None) -> OrderResult:
         def f() -> OrderResult:
             mt5 = self._mt5
             rows = mt5.positions_get(ticket=ticket)
@@ -237,7 +261,7 @@ class Mt5Gateway:
                 "action": mt5.TRADE_ACTION_DEAL,
                 "position": ticket,
                 "symbol": pos.symbol,
-                "volume": pos.volume,
+                "volume": pos.volume if volume is None else min(volume, pos.volume),
                 "type": mt5.ORDER_TYPE_SELL if buy else mt5.ORDER_TYPE_BUY,
                 "price": tick.bid if buy else tick.ask,
                 "deviation": 20,

@@ -43,3 +43,22 @@ def manager(cfg: RiskConfig | None = None, clock: FixedClock | None = None) -> t
     rm = RiskManager(cfg or RiskConfig(), signer, max_data_age_seconds=3.0, clock=clock)
     rm.start(account())
     return rm, signer, clock
+
+
+def synthetic_bars(n: int, seed: int = 1, start: float = 1.1000, vol: float = 0.0008):
+    """Marche aléatoire à régimes (tendance haussière / baissière), bougies H1 valides."""
+    import random
+
+    from orionx.core.models import Bar
+
+    rnd, price, drift, out = random.Random(seed), start, 0.0, []
+    for i in range(n):
+        if i % 150 == 0:
+            drift = rnd.choice([-1, 1]) * vol * 0.2
+        o = price
+        c = max(0.5, o + drift + rnd.gauss(0, vol))
+        h = max(o, c) + abs(rnd.gauss(0, vol * 0.5))
+        lo = min(o, c) - abs(rnd.gauss(0, vol * 0.5))
+        out.append(Bar(T0 + timedelta(hours=i), round(o, 5), round(h, 5), round(lo, 5), round(c, 5), 100.0))
+        price = c
+    return out

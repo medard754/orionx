@@ -2,32 +2,30 @@
 
 **À mettre à jour à chaque fin de tâche.** Coller ce fichier au début d'une session de supervision.
 
-Dernière mise à jour : 12 oct. 2026 · Phase : socle (mois 1) · Mode : démo uniquement
+Dernière mise à jour : 13 oct. 2026 · Phase : validation du socle (mois 1-2) · Mode : démo uniquement
 
 ## Fait
 
-- [x] Noyau : modèles immuables, configuration avec bornes absolues, bus d'événements
-- [x] Gestionnaire de risques M5 v0 (15 règles, arrêts jour/semaine/drawdown/pertes consécutives)
-- [x] Approbation signée HMAC + Executor M6 v0 (idempotent, correction ou fermeture si pas de stop-loss)
-- [x] Courtier simulé, 47 tests automatisés, CLI `simulate`
-- [x] `Mt5Gateway` écrit **mais non testé** sur un terminal réel
+- [x] Noyau, gestionnaire de risques M5, approbation signée, Executor M6, courtier simulé
+- [x] **T-01** lecture du compte démo MT5 validée · **T-02** premier ordre démo de bout en bout validé (13 oct. 2026)
+- [x] **T-08** âge des données mesuré en heure locale (décalage serveur MT5) : validé sur MT5
+- [x] Code écrit et testé sur simulateur (101 tests), **à valider sur MT5** via `docs/RUNBOOK_VALIDATION.md` :
+  T-03 journal d'audit · T-04 données temps réel · T-05 arrêt d'urgence · T-06 boucle principale ·
+  T-07 gestion des positions · T-12 stratégie tendance/repli + backtest
 
 ## À faire (ordre recommandé)
 
 | ID | Tâche | Qui | Preuve que c'est fini |
 |---|---|---|---|
-| T-01 | Installer MT5 + compte démo ; valider `mt5-check` (compte, spec, tick, positions) | Dev A | Sortie de la commande collée dans la PR, corrections de `mt5_real.py` |
-| T-02 | Premier ordre démo de bout en bout via `RiskManager` → `Executor` → `Mt5Gateway`, puis fermeture | Dev A | Position ouverte avec SL/TP visible dans MT5, puis fermée ; capture + logs |
-| T-03 | Journal d'audit chaîné par hachage (SQLite) + vérificateur d'intégrité | Dev B | Test : modifier une ligne fait échouer la vérification |
-| T-04 | M2 : collecte ticks/bougies (M1, M5, H1), stockage SQLite, détection de données périmées | Dev B | Test : tick gelé détecté en moins de 3 s |
-| T-05 | Kill switch niveaux 1 à 3 (pause / protection / clôture totale) + commande CLI | Dev A + B | Test : niveau 3 clôture tout en moins de 5 s sur le simulateur |
-| T-06 | Boucle principale asynchrone (orchestration des modules) | Dev B | `python -m orionx.main run` tourne 1 h en simulation sans erreur |
-| T-07 | M7 : stop suiveur, breakeven, sorties partielles (le stop ne s'éloigne jamais) | Dev A | Tests sur le simulateur |
-| T-08 | Calibrer le décalage horaire serveur du courtier (`Mt5Gateway.get_tick`) | Dev A | Détection de péremption correcte sur le démo |
-| T-09 | Règles manquantes : exposition par devise, fenêtres d'annonces, week-end | Dev A | Tests + `docs/risk_rules.md` |
-| T-10 | Passer `ruff` et `mypy --strict` en bloquant dans la CI | Dev B | CI verte sans `continue-on-error` |
-| T-11 | Identifiants dans le coffre-fort Windows (`keyring`) au lieu de variables d'environnement | Dev B | Plus aucun mot de passe en clair |
-| T-12 | Première stratégie à règles (tendance H1 + repli) produisant des `TradeProposal` | Dev A | Backtest sur le simulateur avec coûts |
+| V-1 | Dérouler `RUNBOOK_VALIDATION.md` étapes 1 à 4 sur le démo (journal, arrêt d'urgence) | Dev A + B | Sorties et captures archivées dans `docs/validation/` |
+| V-2 | Revue croisée du code `risk/`, `execution/`, `monitoring/`, `positions/` (chacun relit le code de l'autre) | Dev A + B | PR approuvées, liste des remarques traitées |
+| V-3 | Backtest sur 3000+ bougies puis walk-forward sur plusieurs périodes ; analyser les trades perdants | Dev A | Rapport court : résultats, limites, décision go / no-go |
+| V-4 | Une semaine de `run` en signaux seuls (aucun ordre) ; comparer les signaux au graphique | Dev B | Journal d'audit de la semaine, signaux revus |
+| T-09 | Règles de risque manquantes : exposition par devise, fenêtres d'annonces, week-end | Dev A | Tests + `docs/risk_rules.md` |
+| T-10 | `ruff` et `mypy --strict` bloquants dans la CI (le code n'a pas encore été passé au linter) | Dev B | CI verte sans `continue-on-error` |
+| T-11 | Identifiants dans le coffre-fort Windows (`keyring`) | Dev B | Plus aucun mot de passe en clair |
+| T-13 | Reconnexion automatique du terminal MT5 après coupure (aujourd'hui : mode safe, pas de reconnexion) | Dev A | Test de coupure sur démo |
+| T-14 | Interface d'approbation pour `semi_auto` (API locale, puis dashboard) | Dev B | Approbation d'un signal depuis l'API |
 
 ## Décisions prises
 

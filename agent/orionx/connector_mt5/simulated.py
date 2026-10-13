@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
+from dataclasses import replace
 from datetime import datetime
 
 from orionx.core.errors import GatewayError
 from orionx.core.models import (
     AccountState,
+    Bar,
     OrderResult,
     Position,
     Side,
@@ -24,6 +26,7 @@ class SimulatedGateway:
         drop_sl_on_fill: bool = False,
         fail_modify: bool = False,
         is_demo: bool = True,
+        fail_close: bool = False,
     ) -> None:
         self._specs = specs
         self._balance = balance
@@ -35,12 +38,17 @@ class SimulatedGateway:
         self.drop_sl_on_fill = drop_sl_on_fill  # simule un courtier qui n'enregistre pas le SL
         self.fail_modify = fail_modify
         self._is_demo = is_demo
+        self.fail_close = fail_close
+        self._bars: dict[tuple[str, str], list[Bar]] = {}
         self.orders_sent = 0
 
     # --- pilotage du simulateur -------------------------------------------------
     def set_tick(self, symbol: str, bid: float, ask: float, time: datetime) -> None:
         self._ticks[symbol] = Tick(symbol, bid, ask, time)
         self._check_exits(symbol)
+
+    def set_bars(self, symbol: str, timeframe: str, bars: list[Bar]) -> None:
+        self._bars[(symbol, timeframe)] = list(bars)
 
     # --- Gateway ------------------------------------------------------------------
     async def connect(self) -> None:
@@ -72,6 +80,9 @@ class SimulatedGateway:
             return self._ticks[symbol]
         except KeyError as exc:
             raise GatewayError(f"Aucun tick pour {symbol}") from exc
+
+    async def get_bars(self, symbol: str, timeframe: str, count: int) -> list[Bar]:
+        return self._bars.get((symbol, timeframe), [])[-count:]
 
     async def get_positions(self) -> list[Position]:
         return [self._with_profit(p) for p in self._positions.values()]
@@ -118,13 +129,24 @@ class SimulatedGateway:
         )
         return OrderResult(ok=True, ticket=ticket, retcode=10009)
 
-    async def close_position(self, ticket: int) -> OrderResult:
+    async def close_position(self, ticket: int, volume: float | None = None) -> OrderResult:
         pos = self._positions.get(ticket)
         if pos is None:
             return OrderResult.fail("Position introuvable")
+        if self.fail_close:
+            return OrderResult.fail("Clôture refusée (simulé)", retcode=10006)
         tick = self._ticks[pos.symbol]
         price = tick.bid if pos.side is Side.BUY else tick.ask
-        self._close(pos, price)
+        if volume is None or volume >= pos.volume - 1e-9:
+            self._close(pos, price)
+        else:
+            if volume <= 0:
+                return OrderResult.fail("Volume invalide")
+            part = replace(pos, volume=volume)
+            profit = self._pnl_at(part, price)
+            self._balance += profit
+            self.closed.append((part, profit))
+            self._positions[ticket] = replace(pos, volume=round(pos.volume - volume, 8))
         return OrderResult(ok=True, ticket=ticket, price=price, retcode=10009)
 
     # --- interne ------------------------------------------------------------------

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Protocol
 
-from orionx.core.models import AccountState, OrderResult, Position, Side, SymbolSpec, Tick
+from orionx.core.models import AccountState, Bar, OrderResult, Position, Side, SymbolSpec, Tick
 
 
 class Gateway(Protocol):
@@ -17,6 +17,10 @@ class Gateway(Protocol):
     async def get_symbol_spec(self, symbol: str) -> SymbolSpec: ...
 
     async def get_tick(self, symbol: str) -> Tick: ...
+
+    async def get_bars(self, symbol: str, timeframe: str, count: int) -> list[Bar]:
+        """Bougies FERMÉES, de la plus ancienne à la plus récente (la bougie en cours est exclue)."""
+        ...
 
     async def get_positions(self) -> list[Position]: ...
 
@@ -33,4 +37,6 @@ class Gateway(Protocol):
 
     async def modify_position(self, ticket: int, sl: float, tp: float) -> OrderResult: ...
 
-    async def close_position(self, ticket: int) -> OrderResult: ...
+    async def close_position(self, ticket: int, volume: float | None = None) -> OrderResult:
+        """Clôture totale, ou partielle si `volume` est fourni."""
+        ...

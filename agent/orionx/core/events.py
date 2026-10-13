@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from orionx.core.models import ApprovedOrder, OrderResult, TradeProposal
+from orionx.core.models import ApprovedOrder, Bar, OrderResult, Tick, TradeProposal
 
 
 @dataclass(frozen=True)
@@ -44,3 +44,33 @@ class CircuitBreakerTripped:
 class KillSwitchActivated:
     level: int  # 1 pause, 2 protection, 3 clôture totale
     reason: str
+
+
+@dataclass(frozen=True)
+class TickReceived:
+    tick: Tick
+
+
+@dataclass(frozen=True)
+class BarClosed:
+    symbol: str
+    timeframe: str
+    bar: Bar
+
+
+@dataclass(frozen=True)
+class DataStale:
+    symbol: str
+    age_seconds: float
+
+
+@dataclass(frozen=True)
+class DataRecovered:
+    symbol: str
+
+
+@dataclass(frozen=True)
+class PositionAdjusted:
+    ticket: int
+    action: str
+    detail: str

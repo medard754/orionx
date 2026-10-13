@@ -1,4 +1,5 @@
 import unittest
+from datetime import timedelta
 
 from orionx.connector_mt5.simulated import SimulatedGateway
 from orionx.core.models import Side
@@ -35,6 +36,22 @@ class SimulatedGatewayTests(unittest.IsolatedAsyncioTestCase):
         self.gw.set_tick("EURUSD", 1.08520, 1.08530, T0)
         acc = await self.gw.get_account()
         self.assertAlmostEqual(acc.equity - acc.balance, (1.08520 - 1.08420) / 1e-5 * 0.22, places=6)
+
+    async def test_partial_close_books_profit_and_reduces_volume(self) -> None:
+        res = await self.open_buy()
+        self.gw.set_tick("EURUSD", 1.0880, 1.0881, T0)
+        await self.gw.close_position(res.ticket, 0.10)
+        (p,) = await self.gw.get_positions()
+        self.assertAlmostEqual(p.volume, 0.12)
+        self.assertGreater((await self.gw.get_account()).balance, 10_000)
+
+    async def test_get_bars_returns_last_n(self) -> None:
+        from orionx.core.models import Bar
+
+        bars = [Bar(T0 + timedelta(hours=i), 1.0, 1.1, 0.9, 1.0) for i in range(10)]
+        self.gw.set_bars("EURUSD", "H1", bars)
+        got = await self.gw.get_bars("EURUSD", "H1", 4)
+        self.assertEqual([b.time for b in got], [b.time for b in bars[-4:]])
 
 
 if __name__ == "__main__":

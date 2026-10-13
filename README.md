@@ -36,10 +36,19 @@ copy config.example.yaml config.yaml
 ## Commandes utiles (depuis `agent/`)
 
 ```powershell
-python -m unittest discover -s tests -t . -v   # 47 tests, sans MT5
+python -m unittest discover -s tests -t . -v   # 101 tests, sans MT5
 python -m orionx.main simulate                 # scénario complet sur courtier simulé
 ruff check . ; mypy                            # qualité (voir PROJECT_STATUS T-10)
+python -m orionx.main run                      # boucle de l'agent (n'envoie AUCUN ordre par défaut)
+python -m orionx.main kill --level 3           # arrêt d'urgence depuis un autre terminal
+python -m orionx.main clear-kill               # lève le drapeau d'arrêt d'urgence
+python -m orionx.main audit-verify             # intégrité du journal (data/audit.db)
+python -m orionx.main backtest --bars 3000     # backtest sur l'historique MT5 (lecture seule)
 ```
+
+Exécution automatique des ordres : il faut **deux** réglages explicites, `autonomy: auto` dans `config.yaml`
+**et** l'option `--allow-auto`. Sans l'un des deux, l'agent ne fait que journaliser les signaux.
+Procédure de validation sur MT5 : `docs/RUNBOOK_VALIDATION.md`.
 
 ### Premier contact avec MT5 (lecture seule, aucun ordre)
 
@@ -56,7 +65,14 @@ agent/orionx/
   connector_mt5/  Gateway (contrat), SimulatedGateway, Mt5Gateway (réel, à valider)
   risk/           sizing, approbation signée, gestionnaire de risques (M5)
   execution/      Executor (M6) : ordres signés uniquement, idempotent, vérifie le stop-loss
-  main.py         commandes : simulate, mt5-check
+  audit/          journal d'audit SQLite chaîné par hachage (T-03)
+  monitoring/     arrêt d'urgence à 3 niveaux + drapeau sur disque (T-05)
+  data/           ticks, bougies, données périmées, stockage SQLite (T-04)
+  positions/      breakeven, stop suiveur, sortie partielle (T-07)
+  strategies/     indicateurs + stratégie tendance/repli H1 (T-12)
+  backtest/       backtest avec coûts (T-12)
+  agent.py        boucle principale (T-06)
+  main.py         commandes : simulate, mt5-check, demo-trade, run, kill, clear-kill, audit-*, backtest
 agent/tests/      tests unittest (compatibles pytest)
 docs/             PROJECT_STATUS.md, risk_rules.md, adr/
 ```

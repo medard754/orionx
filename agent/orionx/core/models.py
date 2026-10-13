@@ -80,6 +80,22 @@ class Tick:
 
 
 @dataclass(frozen=True)
+class Bar:
+    """Bougie FERMÉE. `time` est l'heure du courtier : ne jamais la comparer à l'horloge locale."""
+
+    time: datetime
+    open: float
+    high: float
+    low: float
+    close: float
+    volume: float = 0.0
+
+    def __post_init__(self) -> None:
+        _aware(self.time, "Bar.time")
+        _require(self.low <= min(self.open, self.close) and self.high >= max(self.open, self.close), "bougie incohérente")
+
+
+@dataclass(frozen=True)
 class AccountState:
     balance: float
     equity: float

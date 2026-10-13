@@ -6,8 +6,6 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-import yaml
-
 from orionx.core.errors import ConfigError
 
 # Valeurs maximales codées en dur : aucun fichier de configuration ne peut les dépasser.
@@ -73,6 +71,8 @@ class AppConfig:
 
 
 def load_config(path: str | Path) -> AppConfig:
+    import yaml  # import tardif : seule la lecture d'un fichier YAML en a besoin
+
     raw: dict[str, Any] = yaml.safe_load(Path(path).read_text(encoding="utf-8")) or {}
     try:
         risk = RiskConfig(**(raw.pop("risk", None) or {}))
