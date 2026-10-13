@@ -10,12 +10,12 @@ from __future__ import annotations
 
 import asyncio
 from concurrent.futures import ThreadPoolExecutor
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from functools import partial
 from typing import Any, Callable, TypeVar
 
 from orionx.core.errors import GatewayError
-from orionx.core.models import AccountState, OrderResult, Position, Side, SymbolSpec, Tick
+from orionx.core.models import AccountState, OrderResult, Position, Side, SymbolSpec, Tick, utcnow
 
 T = TypeVar("T")
 MAGIC = 26_10_12  # identifiant des ordres ORIONX
@@ -33,6 +33,7 @@ class Mt5Gateway:
         self._login, self._password, self._server, self._path = login, password, server, path
         self._pool = ThreadPoolExecutor(max_workers=1, thread_name_prefix="mt5")
         self._mt5: Any = None
+        self._last_seen: dict[str, tuple[int, datetime]] = {}  # symbole -> (time_msc, vu à)
 
     async def _run(self, fn: Callable[..., T], *args: Any) -> T:
         loop = asyncio.get_running_loop()
@@ -116,9 +117,20 @@ class Mt5Gateway:
             t = self._mt5.symbol_info_tick(symbol)
             if t is None:
                 raise GatewayError(f"Aucun tick pour {symbol}")
-            # TODO(T-08) : t.time est exprimé en heure SERVEUR du courtier ; calibrer le décalage
-            # avec l'horloge locale avant de s'en servir pour la détection de données périmées.
-            return Tick(symbol, t.bid, t.ask, datetime.fromtimestamp(t.time, tz=timezone.utc))
+            # t.time est en heure SERVEUR du courtier (ex. UTC+3) : inutilisable pour mesurer l'âge.
+            # On mesure donc depuis l'heure LOCALE à laquelle on a vu ce prix changer (indépendant du fuseau).
+            msc = int(getattr(t, "time_msc", 0) or t.time * 1000)
+            prev = self._last_seen.get(symbol)
+            if prev is None:
+                # Première observation : l'âge réel est inconnu => traité comme PÉRIMÉ jusqu'au prochain changement.
+                received = utcnow() - timedelta(hours=1)
+                self._last_seen[symbol] = (msc, received)
+            elif prev[0] != msc:
+                received = utcnow()
+                self._last_seen[symbol] = (msc, received)
+            else:
+                received = prev[1]
+            return Tick(symbol, t.bid, t.ask, datetime.fromtimestamp(t.time, tz=timezone.utc), received)
 
         return await self._run(f)
 

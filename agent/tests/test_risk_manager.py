@@ -3,7 +3,7 @@ import unittest
 from datetime import timedelta
 
 from orionx.core.config import RiskConfig
-from orionx.core.models import Position, Side
+from orionx.core.models import Position, Side, Tick
 from orionx.risk.sizing import risk_per_lot
 from tests.helpers import SPECS, T0, EURUSD, account, manager, proposal, tick
 
@@ -45,6 +45,15 @@ class RiskManagerTests(unittest.TestCase):
         clock.advance(seconds=10)
         d = self.ev(rm, proposal(valid_s=600))
         self.assertEqual(d.reasons, ("STALE_DATA",))
+
+    def test_server_clock_offset_does_not_hide_stale_data(self) -> None:
+        """Le courtier est à UTC+3 : son horodatage est 3 h « dans le futur ». L'âge doit venir de received_at."""
+        rm, _, clock = manager()
+        server_time = clock.now + timedelta(hours=3)
+        stale = Tick("EURUSD", 1.08412, 1.08420, server_time, received_at=clock.now - timedelta(seconds=30))
+        fresh = Tick("EURUSD", 1.08412, 1.08420, server_time, received_at=clock.now - timedelta(seconds=1))
+        self.assertEqual(self.ev(rm, tk=stale).reasons, ("STALE_DATA",))
+        self.assertTrue(self.ev(rm, tk=fresh).approved)
 
     def test_expired_proposal_rejected(self) -> None:
         rm, _, clock = manager()

@@ -50,14 +50,29 @@ class SymbolSpec:
 
 @dataclass(frozen=True)
 class Tick:
+    """Prix instantané.
+
+    `time` = horodatage du courtier (heure SERVEUR, souvent UTC+2/+3 : ne jamais le comparer à
+    l'horloge locale). `received_at` = heure locale (UTC) à laquelle ce prix a été observé pour la
+    première fois ; c'est lui qui sert à mesurer l'âge des données. S'il est absent, `time` est
+    supposé exprimé sur la même horloge que le système (simulateur, tests).
+    """
+
     symbol: str
     bid: float
     ask: float
     time: datetime
+    received_at: datetime | None = None
 
     def __post_init__(self) -> None:
         _require(0 < self.bid <= self.ask, "bid/ask incohérents")
         _aware(self.time, "Tick.time")
+        if self.received_at is not None:
+            _aware(self.received_at, "Tick.received_at")
+
+    @property
+    def observed_at(self) -> datetime:
+        return self.received_at or self.time
 
     @property
     def spread(self) -> float:

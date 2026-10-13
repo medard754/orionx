@@ -120,7 +120,7 @@ class RiskManager:
             return Decision(False, reasons=("UNKNOWN_SYMBOL",))
         if now > proposal.valid_until:
             return Decision(False, reasons=("PROPOSAL_EXPIRED",))
-        if (now - tick.time) > timedelta(seconds=self._max_age):
+        if (now - tick.observed_at) > timedelta(seconds=self._max_age):
             return Decision(False, reasons=("STALE_DATA",))
 
         reasons: list[str] = []
