@@ -1,0 +1,11 @@
+python -m orionx.main demo-trade
+Aucun identifiant fourni : rattachement au compte déjà connecté dans le terminal MT5.
+Compte : équité=100000.0 USD démo=True
+Prix : bid=1.11796 ask=1.11796
+Approuvé : ACHAT 0.01 lot EURUSD, SL 1.11596, TP 1.12396 (signé)
+Tapez OUI pour envoyer cet ordre sur le compte DÉMO : oui
+Ordre exécuté : ticket 10921214955 au prix 1.11793
+Position visible : EURUSD buy 0.01 lot, SL=1.11596, TP=1.12396
+-> Regardez l'onglet « Trade » de MetaTrader 5 : la position reste ouverte 10 s.
+Position fermée.
+Solde final : 99999.94 USD (écart dû au spread)

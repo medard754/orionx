@@ -2,6 +2,7 @@
 
   python -m orionx.main simulate          # scénario complet sur courtier simulé (sans MT5)
   python -m orionx.main mt5-check         # lecture seule d'un compte DÉMO MT5 (aucun ordre)
+  python -m orionx.main demo-trade        # T-02 : UN ordre démo de 0,01 lot, puis fermeture
 """
 
 from __future__ import annotations
@@ -66,13 +67,13 @@ async def simulate(cfg: AppConfig) -> int:
     return 0
 
 
-async def mt5_check() -> int:
+def _mt5_gateway() -> "Mt5Gateway | None":  # noqa: UP037
     from orionx.connector_mt5.mt5_real import Mt5Gateway  # import tardif (Windows)
 
     path = os.environ.get("ORIONX_MT5_PATH")
     if os.environ.get("ORIONX_MT5_LOGIN"):
         try:
-            gw = Mt5Gateway(
+            return Mt5Gateway(
                 int(os.environ["ORIONX_MT5_LOGIN"]),
                 os.environ["ORIONX_MT5_PASSWORD"],
                 os.environ["ORIONX_MT5_SERVER"],
@@ -80,10 +81,15 @@ async def mt5_check() -> int:
             )
         except KeyError as exc:
             print(f"Variable d'environnement manquante : {exc}. Voir .env.example")
-            return 2
-    else:
-        print("Aucun identifiant fourni : rattachement au compte déjà connecté dans le terminal MT5.")
-        gw = Mt5Gateway(path=path)
+            return None
+    print("Aucun identifiant fourni : rattachement au compte déjà connecté dans le terminal MT5.")
+    return Mt5Gateway(path=path)
+
+
+async def mt5_check() -> int:
+    gw = _mt5_gateway()
+    if gw is None:
+        return 2
     await gw.connect()
     try:
         acc = await gw.get_account()
@@ -99,15 +105,36 @@ async def mt5_check() -> int:
     return 0
 
 
+async def demo_trade(auto_yes: bool, hold: float) -> int:
+    from orionx.demo_trade import run_demo_trade
+
+    gw = _mt5_gateway()
+    if gw is None:
+        return 2
+    await gw.connect()
+    try:
+        return await run_demo_trade(
+            gw,
+            hold_seconds=hold,
+            confirm=(lambda _msg: True) if auto_yes else (lambda msg: input(msg).strip().upper() == "OUI"),
+        )
+    finally:
+        await gw.shutdown()
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="orionx")
-    parser.add_argument("command", choices=["simulate", "mt5-check"])
+    parser.add_argument("command", choices=["simulate", "mt5-check", "demo-trade"])
+    parser.add_argument("--yes", action="store_true", help="demo-trade : ne pas demander confirmation")
+    parser.add_argument("--hold", type=float, default=10.0, help="demo-trade : secondes avant fermeture")
     parser.add_argument("--config", type=Path, default=None)
     args = parser.parse_args(argv)
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
     cfg = _config(str(args.config) if args.config else None)
     if args.command == "simulate":
         return asyncio.run(simulate(cfg))
+    if args.command == "demo-trade":
+        return asyncio.run(demo_trade(args.yes, args.hold))
     return asyncio.run(mt5_check())
 
 

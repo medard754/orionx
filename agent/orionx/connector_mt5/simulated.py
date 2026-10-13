@@ -23,6 +23,7 @@ class SimulatedGateway:
         *,
         drop_sl_on_fill: bool = False,
         fail_modify: bool = False,
+        is_demo: bool = True,
     ) -> None:
         self._specs = specs
         self._balance = balance
@@ -33,6 +34,7 @@ class SimulatedGateway:
         self.reject_next = False
         self.drop_sl_on_fill = drop_sl_on_fill  # simule un courtier qui n'enregistre pas le SL
         self.fail_modify = fail_modify
+        self._is_demo = is_demo
         self.orders_sent = 0
 
     # --- pilotage du simulateur -------------------------------------------------
@@ -56,7 +58,7 @@ class SimulatedGateway:
             margin_free=equity,
             margin_level=None if not self._positions else 1000.0,
             currency="USD",
-            is_demo=True,
+            is_demo=self._is_demo,
         )
 
     async def get_symbol_spec(self, symbol: str) -> SymbolSpec:
