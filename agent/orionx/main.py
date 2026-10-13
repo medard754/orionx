@@ -69,12 +69,21 @@ async def simulate(cfg: AppConfig) -> int:
 async def mt5_check() -> int:
     from orionx.connector_mt5.mt5_real import Mt5Gateway  # import tardif (Windows)
 
-    try:
-        login, pwd, server = int(os.environ["ORIONX_MT5_LOGIN"]), os.environ["ORIONX_MT5_PASSWORD"], os.environ["ORIONX_MT5_SERVER"]
-    except KeyError as exc:
-        print(f"Variable d'environnement manquante : {exc}. Voir .env.example")
-        return 2
-    gw = Mt5Gateway(login, pwd, server, os.environ.get("ORIONX_MT5_PATH"))
+    path = os.environ.get("ORIONX_MT5_PATH")
+    if os.environ.get("ORIONX_MT5_LOGIN"):
+        try:
+            gw = Mt5Gateway(
+                int(os.environ["ORIONX_MT5_LOGIN"]),
+                os.environ["ORIONX_MT5_PASSWORD"],
+                os.environ["ORIONX_MT5_SERVER"],
+                path,
+            )
+        except KeyError as exc:
+            print(f"Variable d'environnement manquante : {exc}. Voir .env.example")
+            return 2
+    else:
+        print("Aucun identifiant fourni : rattachement au compte déjà connecté dans le terminal MT5.")
+        gw = Mt5Gateway(path=path)
     await gw.connect()
     try:
         acc = await gw.get_account()

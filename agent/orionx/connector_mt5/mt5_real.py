@@ -22,7 +22,14 @@ MAGIC = 26_10_12  # identifiant des ordres ORIONX
 
 
 class Mt5Gateway:
-    def __init__(self, login: int, password: str, server: str, path: str | None = None) -> None:
+    def __init__(
+        self,
+        login: int | None = None,
+        password: str | None = None,
+        server: str | None = None,
+        path: str | None = None,
+    ) -> None:
+        """Sans identifiants : on se rattache au compte DÉJÀ connecté dans le terminal MT5."""
         self._login, self._password, self._server, self._path = login, password, server, path
         self._pool = ThreadPoolExecutor(max_workers=1, thread_name_prefix="mt5")
         self._mt5: Any = None
@@ -40,10 +47,19 @@ class Mt5Gateway:
                 "Package MetaTrader5 introuvable : pip install -e \".[mt5]\" (Windows uniquement)"
             ) from exc
         self._mt5 = mt5
-        kwargs: dict[str, Any] = {"login": self._login, "password": self._password, "server": self._server}
+        kwargs: dict[str, Any] = {}
+        if self._login is not None:
+            if not self._password or not self._server:
+                raise GatewayError("login fourni sans mot de passe ou sans serveur")
+            kwargs = {"login": self._login, "password": self._password, "server": self._server}
         ok = mt5.initialize(self._path, **kwargs) if self._path else mt5.initialize(**kwargs)
         if not ok:
-            raise GatewayError(f"initialize() a échoué : {mt5.last_error()}")
+            code, text = mt5.last_error()
+            hint = {
+                -6: " (identifiants refusés : vérifiez login / mot de passe / serveur, ou retirez-les pour utiliser le compte déjà connecté)",
+                -10003: " (terminal MT5 introuvable ou non lancé)",
+            }.get(code, "")
+            raise GatewayError(f"initialize() a échoué : ({code}, {text!r}){hint}")
 
     async def connect(self) -> None:
         await self._run(self._connect_sync)
