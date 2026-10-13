@@ -1,0 +1,26 @@
+name: CI
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: agent
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -e ".[dev]"
+      # BLOQUANT : les tests doivent passer.
+      - run: python -m unittest discover -s tests -t . -v
+      # Non bloquants au départ (le code n'a pas encore été passé au linter) :
+      # corriger puis retirer « continue-on-error ».
+      - run: ruff check .
+        continue-on-error: true
+      - run: mypy
+        continue-on-error: true

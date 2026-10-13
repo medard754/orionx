@@ -1,0 +1,31 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+build/
+dist/
+
+# Secrets : NE JAMAIS VERSIONNER
+.env
+config.yaml
+*.pem
+*.key
+secrets/
+
+# Données locales
+*.db
+*.sqlite3
+data/
+logs/
+
+# Éditeurs / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+node_modules/

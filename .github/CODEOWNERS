@@ -1,0 +1,6 @@
+# Remplacer @dev1 / @dev2 par vos identifiants GitHub.
+# Toute modification du risque, de l'exécution ou du connecteur exige la relecture de l'AUTRE développeur.
+/agent/orionx/risk/        @dev1 @dev2
+/agent/orionx/execution/   @dev1 @dev2
+/agent/orionx/connector_mt5/ @dev1 @dev2
+/agent/orionx/core/config.py @dev1 @dev2
