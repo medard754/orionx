@@ -70,7 +70,7 @@ class AuditLog:
     def __init__(self, path: str | Path = ":memory:", clock: Callable[[], datetime] = utcnow) -> None:
         if str(path) != ":memory:":
             Path(path).parent.mkdir(parents=True, exist_ok=True)
-        self._db = sqlite3.connect(str(path), check_same_thread=False)
+        self._db = sqlite3.connect(str(path), check_same_thread=False, timeout=10, isolation_level=None)
         self._db.executescript(_SCHEMA)
         self._lock = threading.Lock()
         self._clock = clock
@@ -78,14 +78,21 @@ class AuditLog:
     def append(self, kind: str, payload: Any = None) -> int:
         body = json.dumps(to_jsonable(payload or {}), sort_keys=True, ensure_ascii=False, separators=(",", ":"))
         with self._lock:
-            row = self._db.execute("SELECT hash FROM audit ORDER BY id DESC LIMIT 1").fetchone()
-            prev = row[0] if row else GENESIS
-            ts = self._clock().isoformat()
-            cur = self._db.execute(
-                "INSERT INTO audit (ts, kind, payload, prev_hash, hash) VALUES (?, ?, ?, ?, ?)",
-                (ts, kind, body, prev, _digest(prev, ts, kind, body)),
-            )
-            self._db.commit()
+            # BEGIN IMMEDIATE : lecture du dernier hachage + insertion atomiques, même si un AUTRE processus
+            # (ex. la commande `kill`) écrit en même temps dans le même fichier. Sans cela la chaîne pourrait se scinder.
+            self._db.execute("BEGIN IMMEDIATE")
+            try:
+                row = self._db.execute("SELECT hash FROM audit ORDER BY id DESC LIMIT 1").fetchone()
+                prev = row[0] if row else GENESIS
+                ts = self._clock().isoformat()
+                cur = self._db.execute(
+                    "INSERT INTO audit (ts, kind, payload, prev_hash, hash) VALUES (?, ?, ?, ?, ?)",
+                    (ts, kind, body, prev, _digest(prev, ts, kind, body)),
+                )
+                self._db.execute("COMMIT")
+            except BaseException:
+                self._db.execute("ROLLBACK")
+                raise
             return int(cur.lastrowid or 0)
 
     def verify(self) -> VerifyResult:

@@ -171,6 +171,9 @@ async def kill_cmd(level: int, auto_yes: bool) -> int:
         signer = ApprovalSigner()
         ks = KillSwitch(gw, Executor(gw, signer), RiskManager(AppConfig().risk, signer))
         report = await ks.activate(level, "commande manuelle")
+        from orionx.audit.log import AuditLog
+
+        AuditLog(AUDIT_DB).append("ManualKill", {"level": level, "actions": report.actions, "failures": report.failures})
         print("Actions :", *report.actions, sep="\n  - ")
         if report.failures:
             print("ÉCHECS (à traiter à la main dans MT5) :", *report.failures, sep="\n  - ")
@@ -196,8 +199,11 @@ def audit_cmd(tail: bool) -> int:
     return 0 if r.ok else 1
 
 
-async def backtest_cmd(symbol: str, n_bars: int) -> int:
+async def backtest_cmd(symbol: str, n_bars: int, folds: int, csv_path: Path | None) -> int:
+    import csv
+
     from orionx.backtest.runner import run_backtest
+    from orionx.backtest.walkforward import random_reference, split_folds
     from orionx.strategies.trend_pullback import TrendPullback
 
     gw = _mt5_gateway()
@@ -208,11 +214,35 @@ async def backtest_cmd(symbol: str, n_bars: int) -> int:
         spec, bars = await gw.get_symbol_spec(symbol), await gw.get_bars(symbol, "H1", n_bars)
     finally:
         await gw.shutdown()
+    costs = {"spread_points": 10.0, "commission_per_lot": 7.0}
     print(f"{len(bars)} bougies H1 de {symbol} ({bars[0].time:%Y-%m-%d} -> {bars[-1].time:%Y-%m-%d})")
-    r = run_backtest(bars, TrendPullback(), spec, symbol, spread_points=10, commission_per_lot=7.0)
-    print(f"Trades : {r.trades} | gagnants : {r.win_rate:.0%} | profit factor : {r.profit_factor:.2f}")
-    print(f"Résultat net : {r.net_profit:+.2f} | drawdown max : {r.max_drawdown_pct:.1f} % | capital final : {r.final_equity:.2f}")
-    print("Résultats INDICATIFS (spread 1 pip, commission 7 $/lot). Ce n'est pas une promesse de gain.")
+    if len(bars) < n_bars:
+        print(f"Attention : MetaTrader n'a fourni que {len(bars)} bougies sur {n_bars} demandées.")
+
+    def line(label: str, r) -> str:  # type: ignore[no-untyped-def]
+        return (f"{label:<12} trades={r.trades:>4}  gagnants={r.win_rate:>4.0%}  PF={r.profit_factor:>5.2f}  "
+                f"net={r.net_profit:>+9.2f}  DD={r.max_drawdown_pct:>5.1f} %")  # fmt: skip
+
+    total = run_backtest(bars, TrendPullback(), spec, symbol, **costs)
+    print("\nSTRATÉGIE (toute la période)\n " + line("total", total))
+    if folds > 1 and len(bars) // folds >= 600:
+        print(f"\nPAR PÉRIODE ({folds} blocs consécutifs) : une stratégie fiable est stable d'un bloc à l'autre")
+        for i, part in enumerate(split_folds(bars, folds), 1):
+            r = run_backtest(part, TrendPullback(), spec, symbol, **costs)
+            print(" " + line(f"bloc {i} ({part[0].time:%m-%d})", r))
+    ref = random_reference(bars, spec, symbol, total.net_profit, runs=20, **costs)
+    print(f"\nTÉMOIN ALÉATOIRE ({ref.runs} tirages, mêmes stops, objectifs et coûts)")
+    print(f"  net moyen = {ref.mean_net:+.2f} (écart-type {ref.std_net:.2f}) · PF moyen = {ref.mean_pf:.2f}")
+    print(f"  la stratégie fait mieux que {ref.share_worse:.0%} des tirages aléatoires")
+    print("\nRésultats INDICATIFS (spread 1 pip, commission 7 $/lot). Un seul symbole, une seule période :")
+    print("ce n'est ni une preuve de rentabilité ni une promesse de gain.")
+    if csv_path:
+        with open(csv_path, "w", newline="", encoding="utf-8") as f:
+            w = csv.writer(f)
+            w.writerow(["ouverture", "sens", "entree", "sortie", "lots", "profit", "raison"])
+            for t in total.log:
+                w.writerow([t.opened, t.side, t.entry, t.exit, t.volume, round(t.profit, 2), t.reason])
+        print(f"Détail des trades : {csv_path}")
     return 0
 
 
@@ -228,6 +258,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--max-cycles", type=int, default=None, help="run : s'arrêter après N cycles")
     parser.add_argument("--symbol", default="EURUSD", help="backtest : symbole")
     parser.add_argument("--bars", type=int, default=3000, help="backtest : nombre de bougies H1")
+    parser.add_argument("--folds", type=int, default=4, help="backtest : nombre de périodes consécutives")
+    parser.add_argument("--csv", type=Path, default=None, help="backtest : exporte les trades en CSV")
     args = parser.parse_args(argv)
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
     cfg = _config(str(args.config) if args.config else None)
@@ -250,7 +282,7 @@ def main(argv: list[str] | None = None) -> int:
     if args.command in ("audit-verify", "audit-tail"):
         return audit_cmd(args.command == "audit-tail")
     if args.command == "backtest":
-        return asyncio.run(backtest_cmd(args.symbol, args.bars))
+        return asyncio.run(backtest_cmd(args.symbol, args.bars, args.folds, args.csv))
     if args.command == "demo-trade":
         return asyncio.run(demo_trade(args.yes, args.hold))
     return asyncio.run(mt5_check())

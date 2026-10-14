@@ -96,3 +96,40 @@ class BacktestTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class WalkForwardTests(unittest.TestCase):
+    def test_split_folds_covers_everything_without_overlap(self) -> None:
+        from orionx.backtest.walkforward import split_folds
+
+        bars = synthetic_bars(1003)
+        folds = split_folds(bars, 4)
+        self.assertEqual([len(f) for f in folds], [250, 250, 250, 253])
+        self.assertEqual([b for f in folds for b in f], bars)
+        with self.assertRaises(ValueError):
+            split_folds(bars, 0)
+
+    def test_random_baseline_is_deterministic_and_comparable(self) -> None:
+        from orionx.backtest.walkforward import random_reference
+
+        bars = synthetic_bars(2000, seed=4)
+        a = random_reference(bars, EURUSD, "EURUSD", 0.0, runs=5)
+        b = random_reference(bars, EURUSD, "EURUSD", 0.0, runs=5)
+        self.assertEqual(a, b)
+        self.assertGreaterEqual(a.share_worse, 0.0)
+        self.assertLessEqual(a.share_worse, 1.0)
+        self.assertEqual(a.runs, 5)
+
+    def test_random_entry_proposals_are_valid(self) -> None:
+        from orionx.strategies.baseline import RandomEntry
+
+        s, bars, n = RandomEntry(seed=1, prob=0.5), synthetic_bars(400, seed=2), 0
+        for i in range(s.min_bars, len(bars)):
+            hist = bars[: i + 1]
+            tick = Tick("EURUSD", hist[-1].close, hist[-1].close + 0.0001, T0)
+            p = s.generate("EURUSD", hist, tick, T0, set())
+            if p:
+                n += 1
+                entry = tick.ask if p.side is Side.BUY else tick.bid
+                self.assertTrue((p.sl < entry < p.tp) if p.side is Side.BUY else (p.tp < entry < p.sl))
+        self.assertGreater(n, 20)

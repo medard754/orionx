@@ -62,6 +62,19 @@ class AuditTests(unittest.IsolatedAsyncioTestCase):
             self.assertEqual((b.verify().ok, b.count()), (True, 2))
             b.close()
 
+    def test_two_writers_on_same_file_keep_one_chain(self) -> None:
+        """L'agent et la commande `kill` écrivent dans le même fichier : la chaîne ne doit jamais se scinder."""
+        with tempfile.TemporaryDirectory() as d:
+            path = Path(d) / "audit.db"
+            a, b = AuditLog(path), AuditLog(path)
+            for i in range(20):
+                (a if i % 2 else b).append("evt", {"i": i})
+            r = a.verify()
+            self.assertEqual((r.ok, r.checked), (True, 20))
+            self.assertEqual(b.verify().checked, 20)
+            a.close()
+            b.close()
+
     async def test_attach_records_bus_events(self) -> None:
         bus, log = EventBus(), AuditLog()
         attach(bus, log)
