@@ -62,7 +62,9 @@ class KillSwitch:
         return report
 
     async def _protect(self, report: KillReport) -> None:
-        for pos in await self._gw.get_positions():
+        positions = await self._gw.get_positions()
+        report.actions.append(f"{len(positions)} position(s) ouverte(s) vue(s) par l'agent")
+        for pos in positions:
             try:
                 spec, tick = await self._gw.get_symbol_spec(pos.symbol), await self._gw.get_tick(pos.symbol)
                 new_sl = protective_stop(pos, tick, spec)
@@ -78,6 +80,8 @@ class KillSwitch:
     async def _close_all(self, report: KillReport) -> None:
         for attempt in range(1, self._retries + 1):
             remaining = await self._gw.get_positions()
+            if attempt == 1 and not remaining:
+                report.actions.append("aucune position à clôturer")
             if not remaining:
                 break
             for pos in remaining:

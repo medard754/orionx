@@ -60,6 +60,13 @@ class KillSwitchTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(len(rep.failures), 2)
         self.assertIsNotNone(self.executor.blocked)
 
+    async def test_report_says_explicitly_when_there_is_nothing_to_close(self) -> None:
+        await self.gw.close_position(1000)
+        await self.gw.close_position(1001)
+        rep = await self.ks.activate(3, "test")
+        self.assertIn("0 position(s) ouverte(s) vue(s) par l'agent", rep.actions)
+        self.assertIn("aucune position à clôturer", rep.actions)
+
     async def test_level_never_decreases(self) -> None:
         await self.ks.activate(3, "test")
         rep = await self.ks.activate(1, "test")
