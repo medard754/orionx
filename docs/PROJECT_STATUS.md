@@ -42,3 +42,4 @@ Dernière mise à jour : 13 oct. 2026 · Phase : validation du socle (mois 1-2) 
 ## Rappel des jalons du plan de 6 mois
 
 Mois 1 : l'agent lit un compte démo en direct · Mois 2 : agent en démo interne avec toutes les règles de risque.
+cochez V-1 « arrêt d’urgence niveaux 2 et 3 : validé le 14/10/2026 » et ajoutez la ligne « tester sur un démo à spreads réels ».
