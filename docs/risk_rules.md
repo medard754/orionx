@@ -2,8 +2,8 @@
 
 | Code | Règle | Valeur par défaut | Borne absolue |
 |---|---|---|---|
-| `HALTED:*` | Arrêt actif (perte jour/semaine, drawdown, pertes consécutives, kill switch) | — | — |
-| `LIVE_DISABLED` | Compte non démo refusé (v0) | — | — |
+| `HALTED:*` | Arrêt actif (perte jour/semaine, drawdown, pertes consécutives, kill switch, `GATEWAY_ERRORS`, `ACCOUNT_CHANGED`) | — | — |
+| `LIVE_DISABLED` | Compte non démo refusé (v0). Contrôlé aussi à chaque cycle par l'agent : un compte différent ou non démo arrête l'agent (`ACCOUNT_CHANGED`, ADR 0006) | — | — |
 | `UNKNOWN_SYMBOL` | Symbole ou tick incohérent | — | — |
 | `PROPOSAL_EXPIRED` | Proposition périmée | — | — |
 | `STALE_DATA` | Tick plus vieux que `max_data_age_seconds` | 3 s | — |

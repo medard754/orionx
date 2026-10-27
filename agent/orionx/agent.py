@@ -29,7 +29,7 @@ from orionx.audit.log import AuditLog, attach
 from orionx.connector_mt5.gateway import Gateway
 from orionx.core.bus import EventBus
 from orionx.core.config import AppConfig
-from orionx.core.errors import OrionxError
+from orionx.core.errors import AccountChangedError, GatewayError, OrionxError
 from orionx.core.events import (
     CircuitBreakerTripped,
     DecisionNote,
@@ -39,7 +39,7 @@ from orionx.core.events import (
     TradeProposed,
     TradeRejected,
 )
-from orionx.core.models import OrderResult, Position, SymbolSpec, TradeProposal, utcnow
+from orionx.core.models import AccountState, OrderResult, Position, SymbolSpec, TradeProposal, utcnow
 from orionx.data.engine import MarketData, MarketStore
 from orionx.decision.engine import Candidate, DecisionEngine, EngineResult, StrategyEntry
 from orionx.execution.executor import Executor
@@ -53,6 +53,9 @@ from orionx.strategies.trend_pullback import Strategy
 
 log = logging.getLogger(__name__)
 GATEWAY_HALT = "GATEWAY_ERRORS"
+ACCOUNT_HALT = "ACCOUNT_CHANGED"  # jamais levé automatiquement : l'agent s'arrête (docs/adr/0006)
+RECONNECT_AFTER_ERRORS = 3  # erreurs de cycle de suite avant de tenter de rouvrir la liaison avec le terminal
+RECONNECT_BASE_SECONDS, RECONNECT_MAX_SECONDS = 5.0, 60.0  # attente entre tentatives : 5, 10, 20, 40, 60, 60...
 DATA_HALT = "DATA_STALE"
 
 
@@ -114,6 +117,11 @@ class Agent:
         self._errors = 0
         self._ok_streak = 0
         self.cycles = 0
+        self.aborted: str | None = None  # raison de l'arrêt définitif (compte changé) ; None tant que l'agent peut tourner
+        self._login: int | None = None  # compte du premier démarrage : référence pour toute la vie de l'agent
+        self._reconnect_attempts = 0
+        self._next_reconnect: datetime | None = None
+        self._down_since: datetime | None = None
 
     # --- analyse de marché (M3 v1) ---------------------------------------------------
     def _to_utc(self, server_time: datetime) -> datetime:
@@ -189,6 +197,8 @@ class Agent:
         acc = await self.gw.get_account()
         if not acc.is_demo:
             raise OrionxError("Compte non démo : ORIONX v0 refuse de démarrer.")
+        if self._login is None:  # le premier compte vu reste la référence (même après un redémarrage de la boucle)
+            self._login = acc.login
         for s in self.cfg.symbols:
             self.specs[s] = await self.gw.get_symbol_spec(s)
         self.risk.start(acc)
@@ -214,7 +224,7 @@ class Agent:
             while not stop.is_set():
                 t0 = time.monotonic()
                 await self.run_cycle()
-                if max_cycles is not None and self.cycles >= max_cycles:
+                if self.aborted or (max_cycles is not None and self.cycles >= max_cycles):
                     break
                 with contextlib.suppress(TimeoutError):
                     await asyncio.wait_for(stop.wait(), timeout=max(0.0, cycle_seconds - (time.monotonic() - t0)))
@@ -225,10 +235,14 @@ class Agent:
     async def run_cycle(self) -> CycleReport:
         rep = CycleReport()
         self.cycles += 1
+        if self.aborted:  # arrêt définitif : on ne touche plus à rien
+            rep.error = self.aborted
+            return rep
         try:
             await self._check_kill_flag(rep)
             self._apply_due_risk_change()
             acc = await self.gw.get_account()
+            self._check_account(acc)  # avant toute lecture ou action sur les positions
             self.risk.on_account_update(acc)
             positions = await self.gw.get_positions()
             self._detect_closed(positions)
@@ -246,9 +260,11 @@ class Agent:
             if self.engine:
                 await self._decide(acc, positions, rep)
             await self._success()
+        except AccountChangedError as exc:
+            self._abort(str(exc), rep)
         except Exception as exc:  # noqa: BLE001 - la boucle ne doit jamais mourir sur une erreur ponctuelle
             rep.error = f"{type(exc).__name__}: {exc}"
-            await self._failure(rep.error)
+            await self._failure(rep.error, exc)
         await self._publish_new_halts()
         return rep
 
@@ -341,14 +357,28 @@ class Agent:
         return await self.executor.execute(decision.order)
 
     # --- robustesse -------------------------------------------------------------------
+    def _check_account(self, acc: AccountState) -> None:
+        """Le terminal peut être rattaché à un autre compte (reconnexion, changement manuel) : on ne gère jamais ses positions."""
+        if not acc.is_demo:
+            raise AccountChangedError("compte non démo détecté : l'agent s'arrête")
+        if self._login is not None and acc.login != self._login:
+            raise AccountChangedError(f"compte différent (démarré sur {self._login}, vu {acc.login}) : l'agent s'arrête")
+
+    def _abort(self, reason: str, rep: CycleReport) -> None:
+        self.aborted = rep.error = reason
+        self.risk.halt(ACCOUNT_HALT)
+        self._log("AccountChanged", {"reason": reason, "expected_login": self._login})
+        log.critical("%s", reason)
+
     async def _success(self) -> None:
         self._errors = 0
+        self._reconnect_attempts, self._next_reconnect, self._down_since = 0, None, None
         self._ok_streak += 1
         if GATEWAY_HALT in self.risk.halt_reasons and self._ok_streak >= 30:
             self.risk.resume(GATEWAY_HALT)
             self._log("GatewayRecovered", {"after_ok_cycles": self._ok_streak})
 
-    async def _failure(self, message: str) -> None:
+    async def _failure(self, message: str, exc: BaseException | None = None) -> None:
         self._errors += 1
         self._ok_streak = 0
         log.error("Cycle en erreur (%s) : %s", self._errors, message)
@@ -356,6 +386,30 @@ class Agent:
             self._log("CycleError", {"consecutive": self._errors, "error": message})
         if self._errors >= 3 and GATEWAY_HALT not in self.risk.halt_reasons:
             self.risk.halt(GATEWAY_HALT)  # l'événement est publié par _publish_new_halts
+        # une erreur de logique (bug) ne justifie pas de rouvrir MT5 : seules les erreurs de liaison déclenchent la reconnexion
+        if self._errors >= RECONNECT_AFTER_ERRORS and isinstance(exc, GatewayError | OSError):
+            await self._try_reconnect()
+
+    async def _try_reconnect(self) -> None:
+        """Rouvre la liaison avec le terminal, avec une attente croissante. Le mode sûr reste actif jusqu'à 30 cycles réussis."""
+        now = self._clock()
+        self._down_since = self._down_since or now
+        if self._next_reconnect is not None and now < self._next_reconnect:
+            return
+        self._reconnect_attempts += 1
+        n = self._reconnect_attempts
+        try:
+            await self.gw.reconnect()
+        except Exception as exc:  # noqa: BLE001 - un échec de reconnexion ne doit jamais tuer la boucle
+            delay = min(RECONNECT_MAX_SECONDS, RECONNECT_BASE_SECONDS * 2 ** min(n - 1, 10))
+            self._next_reconnect = now + timedelta(seconds=delay)
+            log.warning("Reconnexion MT5 (tentative %s) échouée : %s ; prochaine dans %.0f s", n, exc, delay)
+            if n == 1 or n % 10 == 0:
+                self._log("GatewayReconnectFailed", {"attempt": n, "retry_in_seconds": delay, "error": str(exc)})
+            return
+        down = round((now - self._down_since).total_seconds(), 1)
+        self._log("GatewayReconnected", {"attempts": n, "down_seconds": down})
+        self._reconnect_attempts, self._next_reconnect, self._down_since = 0, None, None
 
     async def _check_data_health(self) -> None:
         """Mode sûr automatique (M5 F5.9) : prix figé trop longtemps => plus aucune entrée, jusqu'au retour des prix."""

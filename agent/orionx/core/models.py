@@ -105,6 +105,7 @@ class AccountState:
     margin_level: float | None  # None s'il n'y a aucune marge utilisée
     currency: str
     is_demo: bool
+    login: int | None = None  # numéro du compte : détecte un changement de compte dans le terminal
 
 
 @dataclass(frozen=True)
