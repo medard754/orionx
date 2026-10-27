@@ -79,4 +79,40 @@ régler un paramètre (principe n°10). Un schéma repéré devient, au mieux, l
 
 ## 9. Résultats
 
-*(à compléter après exécution : développement, réserve éventuelle, décision)*
+### 9.1 Développement (27 oct. 2026) – NO-GO
+
+Exécuté avec `python -m orionx.main backtest --h1` (outillage commité en `1baa521`, après ce protocole `9b059fc`).
+Sortie complète : `H-1_developpement_2026-10-27.txt`. Instantané des données : 30 000 bougies, 29 déc. 2021 → 27 oct. 2026,
+`sha256=88180049abbeb362`. Développement : 26 855 bougies (jusqu'au 27 avr. 2026). Réserve : 3 145 bougies, **non évaluée**.
+Les 7 empreintes du §4 étaient identiques au moment de l'exécution.
+
+| Filtre | Trades | PF | Net ($) | DD % | Blocs PF > 1,2 | Bat le hasard | Verdict |
+|---|---|---|---|---|---|---|---|
+| `none` (référence) | 1109 | 0,86 | -3 859 | 44,7 | 0/4 | 12 % | échec |
+| H-1a `vol` | 1106 | 0,86 | -3 801 | 44,1 | 0/4 | 18 % | échec |
+| H-1b `session` | 971 | 0,89 | -2 764 | 34,6 | 0/4 | 28 % | échec |
+| H-1c `trend` | 414 | 1,00 | +37 | 15,7 | 1/4 | 88 % | échec |
+| H-1d `all` | 323 | 0,95 | -464 | 19,7 | 2/4 | 52 % | échec |
+
+Aucune hypothèse ne passe le §5 (chacune échoue aux trois critères de blocs, de drawdown et de hasard). Conformément au §6,
+**la réserve reste fermée** : elle n'a jamais été lue et reste disponible pour un futur cycle.
+
+**Échecs cumulés : 4 sur 5.** Une seule hypothèse peut encore être testée avant l'arrêt prévu par la règle.
+
+### 9.2 Ce que le résultat dit, et ce qu'il ne dit pas
+
+- La stratégie de base ne montre aucun avantage sur 4,3 ans : PF 0,86, drawdown 44,7 %, pire que 88 % des entrées aléatoires.
+  Le PF 0,90 du 14 oct. portait sur une période plus récente et plus favorable. Seul le dernier bloc (≈ 2025-2026) est
+  proche de l'équilibre (PF 1,03).
+- Les filtres `vol` et `session` ne changent presque rien. Seul `trend` s'approche de l'équilibre (PF 1,00, 88 % du hasard),
+  mais en perdant 2/3 des trades ; ce n'est pas un avantage démontré, et ce serait une erreur de le retenir parce qu'il est « moins mauvais ».
+- Analyse des perdants (`none`, descriptive) : les sorties au stop sont 757 pour 351 objectifs (gain moyen ≈ 69 $, perte moyenne ≈ 37 $ :
+  il faut ≈ 35 % de gagnants, il y en a 32 %). Seule la séance New York est positive (+773 $ sur 207 trades) ; le reste est négatif.
+  Ce schéma vient des données de développement : s'en servir comme filtre serait de l'ajustement a posteriori (principe n°10).
+- Limites : un symbole, une UT, spread fixe de 1 pip et commission supposée (le compte démo n'en a pas), pas de swap.
+  Un NO-GO ici dit « pas d'avantage démontré pour CETTE stratégie sur CES données », pas « aucune stratégie ne marche ».
+
+### 9.3 Décision
+
+**NO-GO.** L'exécution automatique reste verrouillée. V-4 (une semaine de signaux seuls) n'est PAS déclenchée par H-1 : elle ne
+vaudrait que comme test de plomberie (signaux conformes au graphique), pas comme preuve d'un avantage.

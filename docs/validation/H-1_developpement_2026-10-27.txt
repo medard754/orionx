@@ -1,0 +1,76 @@
+Aucun identifiant fourni : rattachement au compte déjà connecté dans le terminal MT5.
+Instantané des données créé : data\h1_EURUSD_H1.csv
+Aucun identifiant fourni : rattachement au compte déjà connecté dans le terminal MT5.
+Instantané h1_EURUSD_H1.csv sha256=88180049abbeb362 : 30000 bougies (2021-12-29 -> 2026-10-27)
+Développement : 26855 bougies (2021-12-29 -> 2026-04-27) · réserve : 3145 bougies (2026-04-27 -> 2026-10-27), NON évaluée ici
+
+=== none (RÉFÉRENCE) ===
+ développement trades=1109  gagnants= 32%  PF= 0.86  net= -3859.22  DD= 44.7 %
+  bloc 1       trades= 273  gagnants= 28%  PF= 0.78  net= -2068.66  DD= 22.7 %
+  bloc 2       trades= 269  gagnants= 32%  PF= 0.89  net=  -982.09  DD= 15.2 %
+  bloc 3       trades= 280  gagnants= 32%  PF= 0.87  net= -1182.42  DD= 18.9 %
+  bloc 4       trades= 271  gagnants= 36%  PF= 1.03  net=  +229.60  DD=  7.2 %
+   [OK] trades: 1109 trades (>= 100)
+   [ÉCHEC] blocs: PF > 1.2 dans 0 bloc(s) sur 4 (>= 3 sur 4)
+   [ÉCHEC] drawdown: 44.7 % (< 10.0 %)
+   [ÉCHEC] hasard: meilleur que 12% de 40 tirages (>= 95% de 40)
+
+=== vol (hypothèse) ===
+ développement trades=1106  gagnants= 32%  PF= 0.86  net= -3800.89  DD= 44.1 %
+  bloc 1       trades= 273  gagnants= 28%  PF= 0.78  net= -2068.36  DD= 22.7 %
+  bloc 2       trades= 269  gagnants= 32%  PF= 0.89  net=  -980.94  DD= 15.2 %
+  bloc 3       trades= 279  gagnants= 32%  PF= 0.87  net= -1155.04  DD= 18.6 %
+  bloc 4       trades= 269  gagnants= 36%  PF= 1.04  net=  +352.28  DD=  7.2 %
+   [OK] trades: 1106 trades (>= 100)
+   [ÉCHEC] blocs: PF > 1.2 dans 0 bloc(s) sur 4 (>= 3 sur 4)
+   [ÉCHEC] drawdown: 44.1 % (< 10.0 %)
+   [ÉCHEC] hasard: meilleur que 18% de 40 tirages (>= 95% de 40)
+
+=== session (hypothèse) ===
+ développement trades= 971  gagnants= 32%  PF= 0.89  net= -2764.36  DD= 34.6 %
+  bloc 1       trades= 230  gagnants= 27%  PF= 0.74  net= -2028.46  DD= 22.0 %
+  bloc 2       trades= 241  gagnants= 34%  PF= 0.99  net=   -68.47  DD=  9.9 %
+  bloc 3       trades= 248  gagnants= 33%  PF= 0.90  net=  -794.16  DD= 14.7 %
+  bloc 4       trades= 239  gagnants= 36%  PF= 1.03  net=  +266.42  DD=  6.3 %
+   [OK] trades: 971 trades (>= 100)
+   [ÉCHEC] blocs: PF > 1.2 dans 0 bloc(s) sur 4 (>= 3 sur 4)
+   [ÉCHEC] drawdown: 34.6 % (< 10.0 %)
+   [ÉCHEC] hasard: meilleur que 28% de 40 tirages (>= 95% de 40)
+
+=== trend (hypothèse) ===
+ développement trades= 414  gagnants= 35%  PF= 1.00  net=   +37.00  DD= 15.7 %
+  bloc 1       trades= 103  gagnants= 27%  PF= 0.73  net= -1004.66  DD= 14.5 %
+  bloc 2       trades=  98  gagnants= 42%  PF= 1.34  net= +1054.43  DD=  6.0 %
+  bloc 3       trades=  96  gagnants= 31%  PF= 0.83  net=  -553.11  DD= 11.7 %
+  bloc 4       trades= 111  gagnants= 39%  PF= 1.20  net=  +682.29  DD=  7.1 %
+   [OK] trades: 414 trades (>= 100)
+   [ÉCHEC] blocs: PF > 1.2 dans 1 bloc(s) sur 4 (>= 3 sur 4)
+   [ÉCHEC] drawdown: 15.7 % (< 10.0 %)
+   [ÉCHEC] hasard: meilleur que 88% de 40 tirages (>= 95% de 40)
+
+=== all (hypothèse) ===
+ développement trades= 323  gagnants= 34%  PF= 0.95  net=  -463.98  DD= 19.7 %
+  bloc 1       trades=  81  gagnants= 23%  PF= 0.60  net= -1210.19  DD= 15.7 %
+  bloc 2       trades=  83  gagnants= 40%  PF= 1.23  net=  +611.88  DD=  4.1 %
+  bloc 3       trades=  78  gagnants= 29%  PF= 0.77  net=  -634.49  DD= 10.6 %
+  bloc 4       trades=  76  gagnants= 43%  PF= 1.45  net= +1022.00  DD=  5.6 %
+   [OK] trades: 323 trades (>= 100)
+   [ÉCHEC] blocs: PF > 1.2 dans 2 bloc(s) sur 4 (>= 3 sur 4)
+   [ÉCHEC] drawdown: 19.7 % (< 10.0 %)
+   [ÉCHEC] hasard: meilleur que 52% de 40 tirages (>= 95% de 40)
+
+RÉSUMÉ DÉVELOPPEMENT
+filtre      trades     PF        net   DD %  bat le hasard  critères
+none          1109   0.86      -3859   44.7           12%  échec
+vol           1106   0.86      -3801   44.1           18%  échec
+session        971   0.89      -2764   34.6           28%  échec
+trend          414   1.00        +37   15.7           88%  échec
+all            323   0.95       -464   19.7           52%  échec
+
+TRADES PERDANTS « none » (descriptif : ne sert jamais à régler un paramètre)
+  sens : buy 381/551 perdants net -2339 · sell 376/558 perdants net -1520
+  séance : asia 170/246 perdants net -1074 · london 232/332 perdants net -1937 · new_york 129/207 perdants net +773 · off 32/42 perdants net -443 · overlap 194/282 perdants net -1179
+  jour : dimanche 13/16 perdants net -278 · jeudi 158/225 perdants net -1317 · lundi 126/184 perdants net -638 · mardi 152/226 perdants net -663 · mercredi 147/217 perdants net -673 · vendredi 161/241 perdants net -291
+  motif de sortie : fin des données 0/1 perdants net +10 · objectif 0/351 perdants net +24041 · stop 757/757 perdants net -27911
+
+Aucune hypothèse ne passe tous les critères : la réserve reste FERMÉE. Décision : NO-GO.
