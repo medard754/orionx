@@ -302,6 +302,26 @@ class CommandTests(unittest.TestCase):
             self.assertEqual(m.alert_cmd("alert-setup", visible=True), 0)
         self.assertEqual(stored, {"t": good, "c": "42"})
 
+    def test_a_token_pasted_twice_in_the_invisible_prompt_is_repaired(self) -> None:
+        import contextlib
+
+        import orionx.main as m
+        from orionx.alerts.telegram import clean_token
+
+        good = "7412345678:AAH3xQ_abcdefghijklmnopqrstuvwxyz012"
+        self.assertEqual(clean_token(good + good), (good, "Jeton collé deux fois : un seul exemplaire est gardé."))
+        self.assertEqual(clean_token(good + "x" + good)[1], None, "seul un doublon exact est réparé")
+        stored = {}
+        out = io.StringIO()
+        with (mock.patch("getpass.getpass", return_value=good + good),
+              mock.patch("orionx.alerts.telegram.TelegramNotifier.discover_chat_id", lambda self: "42"),
+              mock.patch("orionx.alerts.telegram.TelegramNotifier.send", lambda self, text: None),
+              mock.patch("orionx.alerts.telegram.store_credentials", lambda t, c: stored.update(t=t)),
+              contextlib.redirect_stdout(out)):  # fmt: skip
+            self.assertEqual(m.alert_cmd("alert-setup"), 0)
+        self.assertEqual(stored["t"], good)
+        self.assertNotIn(good, out.getvalue(), "le jeton n'est jamais affiché")
+
     def test_alert_test_sends_one_message(self) -> None:
         import contextlib
 

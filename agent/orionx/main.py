@@ -198,7 +198,7 @@ def _alert_router(cfg: AppConfig) -> AlertRouter | None:
 def alert_cmd(command: str, visible: bool = False) -> int:
     import getpass
 
-    from orionx.alerts.telegram import AlertError, TelegramNotifier, check_token, load_credentials, store_credentials
+    from orionx.alerts.telegram import AlertError, TelegramNotifier, check_token, clean_token, load_credentials, store_credentials
 
     if command == "alert-test":
         creds = load_credentials()
@@ -218,7 +218,9 @@ def alert_cmd(command: str, visible: bool = False) -> int:
         raw = input("3. Collez le jeton (il s'affiche à l'écran, effacez-le ensuite avec cls) : ")
     else:
         raw = getpass.getpass("3. Collez le jeton (la saisie reste invisible ; clic droit pour coller) : ")
-    token = "".join(raw.split()).strip("\"'")  # espaces, retours à la ligne et guillemets collés par erreur
+    token, note = clean_token(raw)  # espaces, guillemets, jeton collé deux fois
+    if note:
+        print(note)
     if not token:
         print("Annulé.")
         return 2

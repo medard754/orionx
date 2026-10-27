@@ -78,14 +78,24 @@ class TelegramNotifier:
 TOKEN_RE = re.compile(r"\d{6,12}:[A-Za-z0-9_-]{30,50}")
 
 
+def clean_token(raw: str) -> tuple[str, str | None]:
+    """Répare les erreurs de collage sans ambiguïté : espaces, guillemets, jeton collé deux fois. Rend (jeton, remarque)."""
+    token = "".join(raw.split()).strip("\"'")
+    half = len(token) // 2
+    if len(token) % 2 == 0 and token[:half] == token[half:] and TOKEN_RE.fullmatch(token[:half]):
+        return token[:half], "Jeton collé deux fois : un seul exemplaire est gardé."
+    return token, None
+
+
 def check_token(token: str) -> str | None:
     """Message d'erreur si `token` n'a pas la forme d'un jeton de bot, sinon None. N'affiche JAMAIS le jeton."""
     if TOKEN_RE.fullmatch(token):
         return None
     odd = sum(1 for c in token if not (c.isalnum() or c in ":_-"))
     detail = f"{len(token)} caractère(s) reçu(s)" + (f", dont {odd} inattendu(s)" if odd else "")
-    return (f"Ce n'est pas un jeton de bot ({detail}). Attendu : des chiffres, deux-points, puis environ 35 caractères. "
-            "Le collage dans une saisie invisible échoue souvent sous Windows : voir l'autre méthode ci-dessous.")  # fmt: skip
+    return (f"Ce n'est pas un jeton de bot ({detail} ; un jeton en fait environ 46 : des chiffres, deux-points, puis environ "
+            "35 caractères). Le collage dans une saisie invisible échoue souvent sous Windows : "
+            "voir l'autre méthode ci-dessous.")  # fmt: skip
 
 
 def _keyring() -> ModuleType | None:
