@@ -49,7 +49,7 @@ Dernière mise à jour : 27 oct. 2026 · Phase : validation M3 à M7 sur MT5 dé
 | H-1 | ~~Comparer les filtres~~ : fait, 4 échecs sur 5. **Reste 1 hypothèse** avant l'arrêt de `trend_pullback`. Ne pas la dépenser sans y réfléchir : la réserve est encore vierge | Décision du propriétaire : 5e hypothèse, ou nouvelle stratégie (protocole H-2) |
 | T-10 | ~~`ruff` et `mypy --strict` bloquants dans la CI~~ : fait le 27 oct. (0 erreur, 0 `type: ignore` ajouté) | — |
 | T-11 | Identifiants dans le coffre-fort Windows (`keyring`) | Plus aucun mot de passe en clair |
-| T-13 | Reconnexion automatique du terminal MT5 : **codée et testée sur simulateur** (27 oct., ADR 0006, avec contrôle du compte à chaque cycle). Reste le test de coupure sur démo (`RUNBOOK_VALIDATION.md` §9) | Coupure réelle du terminal journalisée, mode sûr puis reprise |
+| T-13 | Reconnexion automatique du terminal MT5 : **codée et testée sur simulateur** (27 oct., ADR 0006, avec contrôle du compte à chaque cycle). **Coupure du terminal validée sur MT5 démo le 28 oct.** (détection, mode sûr, reconnexion, reprise après 30 cycles, alertes) ; reste le test du changement de compte (§9.2) | Coupure réelle du terminal journalisée, mode sûr puis reprise |
 | T-14 | API locale : **codée et testée** (27 oct., ADR 0007 : 127.0.0.1, jeton, Host vérifié, pas de CORS). Reste l'essai avec l'agent sur MT5 démo (`RUNBOOK_VALIDATION.md` §11), puis le dashboard M9 | Approbation d'un signal depuis l'API |
 
 ## Décisions prises

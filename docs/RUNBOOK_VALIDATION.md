@@ -80,14 +80,18 @@ dans config.yaml, `analysis:` -> `calendar_path: calendar.csv`. Fenêtre B : `ru
 **8.8 Week-end (facultatif, un vendredi)** : `positions: weekend_flat: true`, une position démo ouverte, vérifier la fermeture vers 20h30 UTC.
 
 ## 9. Reconnexion et changement de compte (T-13)
-**9.1 Coupure du terminal** : `run --config config.yaml` en signaux seuls, compte démo. Fermer MetaTrader 5 (pas l'agent), attendre 1 minute,
-le relancer et laisser le compte se reconnecter. Attendu dans `audit-tail` : `CycleError`, `CircuitBreakerTripped` (GATEWAY_ERRORS),
-`GatewayReconnectFailed` (une ligne à la 1re tentative, puis une sur 10), puis `GatewayReconnected` (avec `down_seconds`), enfin
-`GatewayRecovered` 30 cycles plus tard. Aucune entrée n'est possible tant que le mode sûr dure. Vérifier que les positions ouvertes
-n'ont pas été touchées.
-**9.2 Terminal rouvert sur un autre compte** : même procédure, mais se connecter à un AUTRE compte démo avant que l'agent se reconnecte.
-Attendu : `AccountChanged`, `CircuitBreakerTripped` (ACCOUNT_CHANGED), l'agent s'arrête avec le message « ARRÊT DÉFINITIF » (code de
-sortie 4), et il n'a lu ni modifié aucune position du nouveau compte.
+**9.1 Coupure du terminal** (VALIDÉ le 28 oct. 2026) : `run --config config.yaml` en signaux seuls, compte démo. Fermer MetaTrader 5 (pas
+l'agent). **MT5 se rouvre tout seul** en quelques secondes : c'est la bibliothèque MetaTrader5 qui relance le terminal quand l'agent se
+reconnecte (pratique pour la reprise, mais l'agent rouvrira aussi un MT5 que vous avez fermé volontairement ; arrêtez l'agent d'abord).
+Attendu sur Telegram, dans cet ordre : 🔴 « liaison MT5 en erreur », 🟠 « Liaison MT5 rétablie après N s » (N = durée depuis la 1re
+erreur), puis 🟠 « Reprise normale » 30 cycles plus tard. Dans `audit-tail` : `CycleError`, `CircuitBreakerTripped` (GATEWAY_ERRORS),
+`GatewayReconnected` (avec `down_seconds`), `GatewayRecovered`. `GatewayReconnectFailed` n'apparaît que si la 1re tentative échoue.
+Aucune entrée n'est possible tant que le mode sûr dure. Vérifier que les positions ouvertes n'ont pas été touchées.
+**9.2 Changement de compte** : MT5 se rouvrant seul en quelques secondes, on ne peut pas changer de compte « pendant la coupure ». On
+teste directement le contrôle, qui s'exécute à CHAQUE cycle : agent lancé et MT5 ouvert, dans MT5 menu Fichier > Se connecter à un compte de
+trading, choisir un AUTRE compte DÉMO (en ouvrir un : Fichier > Ouvrir un compte). Attendu en moins de 2 s : 🔴 « Agent ARRÊTÉ : compte
+différent… », `AccountChanged` et `CircuitBreakerTripped` (ACCOUNT_CHANGED) dans `audit-tail`, message « ARRÊT DÉFINITIF » dans la
+console (code de sortie 4), et aucune lecture ni modification de position du nouveau compte. Reconnecter ensuite le compte d'origine.
 **9.3 Ne JAMAIS tester avec un compte réel** : le contrôle protège justement de ce cas, ne le provoquez pas.
 
 ## 10. Alertes Telegram (M8)
