@@ -136,7 +136,11 @@ class Executor:
             adverse = (result.price - order.ref_price) if order.side is Side.BUY else (order.ref_price - result.price)
             slippage = adverse / spec.point
             if slippage > order.max_slippage_points and self._on_slippage == "close" and result.ticket is not None:
-                await self._gw.close_position(result.ticket)
+                closed = await self._gw.close_position(result.ticket)
+                if not closed.ok:  # la position reste ouverte : au minimum protégée, puis plus aucun ordre
+                    await self._ensure_protected(order, result)
+                    self.block("SLIPPAGE_CLOSE_FAILED")
+                    return OrderResult.fail(f"SLIPPAGE_CLOSE_FAILED:{slippage:.1f}pts", closed.retcode), slippage, "SLIPPAGE_CLOSE_FAILED"
                 return OrderResult.fail(f"SLIPPAGE_EXCEEDED:{slippage:.1f}pts", result.retcode), slippage, "SLIPPAGE_EXCEEDED"
         result = await self._ensure_protected(order, result)
         return result, slippage, "" if result.ok else result.message
@@ -154,6 +158,6 @@ class Executor:
         fixed = await self._gw.modify_position(pos.ticket, order.sl, order.tp)
         if fixed.ok:
             return result
-        await self._gw.close_position(pos.ticket)
+        closed = await self._gw.close_position(pos.ticket)
         self.block("PROTECTION_FAILED")
-        return OrderResult.fail("PROTECTION_FAILED_POSITION_CLOSED", fixed.retcode)
+        return OrderResult.fail("PROTECTION_FAILED_POSITION_CLOSED" if closed.ok else "PROTECTION_FAILED_POSITION_OPEN", fixed.retcode)

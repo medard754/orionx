@@ -124,6 +124,23 @@ class ExecutorTests(unittest.IsolatedAsyncioTestCase):
         self.assertIn("SLIPPAGE_EXCEEDED", res.message)
         self.assertEqual(await gw.get_positions(), [])
 
+    async def test_slippage_close_refused_leaves_a_protected_position_and_blocks(self) -> None:
+        gw, ex, order, _ = self.build(drop_sl_on_fill=True, fail_close=True)
+        gw.slippage_points = 50
+        res = await ex.execute(order)
+        self.assertFalse(res.ok)
+        self.assertIn("SLIPPAGE_CLOSE_FAILED", res.message)
+        (p,) = await gw.get_positions()  # la position reste ouverte : elle doit au moins avoir son stop
+        self.assertEqual(p.sl, 1.0820)
+        self.assertEqual(ex.blocked, "SLIPPAGE_CLOSE_FAILED")
+
+    async def test_unrepairable_position_whose_close_fails_is_reported_open(self) -> None:
+        gw, ex, order, _ = self.build(drop_sl_on_fill=True, fail_modify=True, fail_close=True)
+        res = await ex.execute(order)
+        self.assertFalse(res.ok)
+        self.assertEqual(res.message, "PROTECTION_FAILED_POSITION_OPEN")
+        self.assertEqual(ex.blocked, "PROTECTION_FAILED")
+
     async def test_small_slippage_is_accepted_and_measured(self) -> None:
         gw, ex, order, _ = self.build()
         gw.slippage_points = 4
