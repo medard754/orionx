@@ -11,7 +11,7 @@ import logging
 import math
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from orionx.connector_mt5.gateway import Gateway
 from orionx.core.bus import EventBus
@@ -19,6 +19,7 @@ from orionx.core.events import PositionAdjusted
 from orionx.core.models import ORIONX_MAGIC, Position, Side, SymbolSpec, Tick, utcnow
 
 log = logging.getLogger(__name__)
+WEEKEND_RETRY = timedelta(minutes=5)
 
 
 @dataclass(frozen=True)
@@ -93,6 +94,7 @@ class PositionManager:
         self._first_seen: dict[int, datetime] = {}
         self._partial_done: set[int] = set()
         self._warned: set[int] = set()
+        self._weekend_retry: dict[int, datetime] = {}  # prochaine tentative après un échec de fermeture du vendredi
 
     async def step(
         self,
@@ -104,7 +106,7 @@ class PositionManager:
         actions: list[str] = []
         now = self._clock()
         live = {p.ticket for p in positions}
-        for store in (self._risk_dist, self._first_seen):
+        for store in (self._risk_dist, self._first_seen, self._weekend_retry):
             for t in [t for t in store if t not in live]:
                 del store[t]
         self._partial_done &= live
@@ -141,8 +143,16 @@ class PositionManager:
             valid = pos.sl is not None and ((pos.sl < pos.price_open) if buy else (pos.sl > pos.price_open))
             self._risk_dist[pos.ticket] = abs(pos.price_open - pos.sl) if valid and pos.sl is not None else None
         if self._rules.weekend_flat and weekend_close_time(now, self._rules):  # --- fermeture avant le week-end
+            retry = self._weekend_retry.get(pos.ticket)
+            if retry is not None and now < retry:
+                return actions
             res = await self._gw.close_position(pos.ticket)
-            await self._note(pos, "WEEKEND_FLAT" if res.ok else "WEEKEND_FLAT_FAILED", "fermeture du marché", actions)
+            if res.ok:
+                await self._note(pos, "WEEKEND_FLAT", "fermeture du marché", actions)
+            else:  # échec signalé UNE fois, puis nouvelle tentative toutes les 5 min (marché fermé : inutile d'insister)
+                if retry is None:
+                    await self._note(pos, "WEEKEND_FLAT_FAILED", "fermeture du marché", actions)
+                self._weekend_retry[pos.ticket] = now + WEEKEND_RETRY
             return actions
         if pos.sl is None:
             if pos.ticket not in self._warned:

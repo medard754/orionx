@@ -233,6 +233,29 @@ class M7Tests(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(acts[0].startswith("WEEKEND_FLAT"), acts)
         self.assertEqual(await self.gw.get_positions(), [])
 
+    async def test_weekend_flat_failure_is_reported_once_and_retried_slowly(self) -> None:
+        await self.build(PositionRules(weekend_flat=True), datetime(2026, 10, 16, 20, 45, tzinfo=UTC))
+        await self.open_buy()
+        self.gw.fail_close = True  # marché déjà fermé
+        calls = 0
+        real = self.gw.close_position
+
+        async def counting(ticket, volume=None):
+            nonlocal calls
+            calls += 1
+            return await real(ticket, volume)
+
+        self.gw.close_position = counting
+        acts = [a for _ in range(3) for a in await self.step(1.08412, 1.08420)]
+        self.assertEqual((calls, len(acts)), (1, 1), acts)  # une tentative, un seul message
+        self.assertTrue(acts[0].startswith("WEEKEND_FLAT_FAILED"))
+        self.clock.advance(minutes=6)
+        self.assertEqual(await self.step(1.08412, 1.08420), [])  # nouvelle tentative, échec déjà signalé
+        self.assertEqual(calls, 2)
+        self.gw.fail_close = False
+        self.clock.advance(minutes=6)
+        self.assertTrue((await self.step(1.08412, 1.08420))[0].startswith("WEEKEND_FLAT #"))
+
     async def test_weekend_flat_disabled_by_default(self) -> None:
         await self.build(PositionRules(), datetime(2026, 10, 16, 20, 45, tzinfo=UTC))
         await self.open_buy()
