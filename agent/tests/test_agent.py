@@ -197,7 +197,7 @@ class AgentAnalysisTests(unittest.IsolatedAsyncioTestCase):
         await self.build(calendar=cal, strategy=False)
         await self.gw.send_market_order("EURUSD", Side.BUY, 0.1, 1.0820, 1.0990, 10, "t")
         self.agent._prev = {p.ticket: p for p in await self.gw.get_positions()}
-        self.gw.set_tick("EURUSD", 1.0880, 1.0881, utcnow())
+        self.gw.set_tick("EURUSD", 1.0855, 1.0856, utcnow())  # sous +1R : seule l'annonce resserre le stop
         r = await self.agent.run_cycle()
         self.assertTrue(any(a.startswith("THESIS_STOP") for a in r.actions), r.actions)
         (p,) = await self.gw.get_positions()
@@ -205,6 +205,20 @@ class AgentAnalysisTests(unittest.IsolatedAsyncioTestCase):
         self.assertIn("ThesisDegraded", self.kinds())
         again = await self.agent.run_cycle()  # même situation : pas de nouvelle réaction
         self.assertFalse(any(a.startswith("THESIS") for a in again.actions))
+
+    async def test_thesis_reaction_never_undoes_the_trailing_stop_of_the_same_cycle(self) -> None:
+        from orionx.analysis.calendar import EconomicCalendar, EconomicEvent
+        from orionx.core.models import Side
+
+        cal = EconomicCalendar([EconomicEvent(utcnow() + timedelta(minutes=10), "EUR", "high", "BCE")])
+        await self.build(calendar=cal, strategy=False)
+        await self.gw.send_market_order("EURUSD", Side.BUY, 0.1, 1.0822, 1.0990, 10, "t")  # entrée 1.0842, R = 20 pips
+        self.agent._prev = {p.ticket: p for p in await self.gw.get_positions()}
+        self.gw.set_tick("EURUSD", 1.0882, 1.0883, utcnow())  # +2R : le suiveur monte le stop à 1.0862
+        r = await self.agent.run_cycle()
+        self.assertTrue(any(a.startswith("STOP_MOVED") for a in r.actions), r.actions)
+        (p,) = await self.gw.get_positions()
+        self.assertGreaterEqual(p.sl, 1.0862 - 1e-9, r.actions)  # la réaction à l'annonce ne l'a pas redescendu
 
     async def test_market_state_is_computed_and_journaled(self) -> None:
         await self.build(bars=synthetic_bars(300, seed=7))

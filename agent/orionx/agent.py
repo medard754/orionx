@@ -234,8 +234,11 @@ class Agent:
             await self.market.poll()
             self._update_offset()
             await self._update_states()
-            rep.actions += await self.positions.step(positions, self.market.last, self.specs,
-                                                     {k: v.atr for k, v in self.states.items() if v.atr > 0})  # fmt: skip
+            managed = await self.positions.step(positions, self.market.last, self.specs,
+                                                {k: v.atr for k, v in self.states.items() if v.atr > 0})  # fmt: skip
+            rep.actions += managed
+            if managed:  # stop ou volume modifiés : la thèse doit réagir sur l'état réel, sinon elle peut éloigner un stop
+                positions = await self.gw.get_positions()
             await self._check_theses(positions, rep)
             await self._check_data_health()
             if self.engine:
