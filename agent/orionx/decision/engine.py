@@ -80,8 +80,8 @@ class DecisionEngine:
         for e in self.entries:
             if not e.enabled:
                 continue
-            if e.regimes is not None and state is not None:
-                if state.regime is Regime.UNKNOWN:
+            if e.regimes is not None:
+                if state is None or state.regime is Regime.UNKNOWN:  # état inconnu : pas de trade, jamais sans filtre
                     return EngineResult(symbol, (), ("REGIME_UNKNOWN",))
                 if state.regime not in e.regimes:
                     continue

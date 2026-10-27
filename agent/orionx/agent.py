@@ -154,11 +154,11 @@ class Agent:
             recent = await self.gw.get_bars(sym, "H1", 2)
             if not recent or self._state_bar.get(sym) == recent[-1].time:
                 continue
-            self._state_bar[sym] = recent[-1].time
             bars = await self.gw.get_bars(sym, "H1", a.vol_window + 60)
             if not bars:
                 continue
             state = analyze(sym, bars, a, self._to_utc)
+            self._state_bar[sym] = recent[-1].time  # seulement après succès : sinon le régime resterait figé une heure
             previous = self.states.get(sym)
             self.states[sym] = state
             if previous is None or (previous.regime, previous.session) != (state.regime, state.session):

@@ -226,6 +226,25 @@ class AgentAnalysisTests(unittest.IsolatedAsyncioTestCase):
         self.assertNotEqual(self.agent.states["EURUSD"].regime.value, "unknown")
         self.assertIn("MarketStateUpdated", self.kinds())
 
+    async def test_failed_history_fetch_retries_the_regime_on_next_cycle(self) -> None:
+        bars = synthetic_bars(300, seed=7)
+        await self.build(bars=bars[:-1])
+        before = self.agent.states["EURUSD"].bar_time
+        self.gw.set_bars("EURUSD", "H1", bars)  # nouvelle bougie
+        real = self.gw.get_bars
+
+        async def history_down(sym, tf, count):
+            if count > 2:
+                raise GatewayError("historique indisponible")
+            return await real(sym, tf, count)
+
+        self.gw.get_bars = history_down
+        r = await self.agent.run_cycle()
+        self.assertIsNotNone(r.error)
+        self.gw.get_bars = real
+        await self.agent.run_cycle()
+        self.assertGreater(self.agent.states["EURUSD"].bar_time, before)  # recalculé, pas figé pendant une heure
+
     async def test_high_volatility_and_blocked_session_checks(self) -> None:
         from orionx.analysis.state import MarketState, Regime, Session
         from orionx.core.config import AnalysisConfig

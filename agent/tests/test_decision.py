@@ -57,7 +57,7 @@ class EngineEvaluateTests(unittest.TestCase):
         r = self.ev(eng, st(Regime.RANGE))
         self.assertEqual((r.candidates, r.notes), ((), ("NO_STRATEGY_FOR_REGIME:range",)))
         self.assertEqual(self.ev(eng, st(Regime.UNKNOWN)).notes, ("REGIME_UNKNOWN",))
-        self.assertEqual(len(self.ev(eng, None).candidates), 1)  # pas d'état : pas de filtrage
+        self.assertEqual(self.ev(eng, None).notes, ("REGIME_UNKNOWN",))  # pas d'état : pas de trade (sens prudent)
 
     def test_legacy_strategy_without_regimes_is_always_eligible(self) -> None:
         eng = engine([StrategyEntry(Fixed("a", Side.BUY))])
