@@ -232,6 +232,16 @@ class M7Tests(unittest.IsolatedAsyncioTestCase):
         (p,) = await self.gw.get_positions()
         self.assertEqual(p.sl, 1.0820)
 
+    async def test_foreign_positions_left_alone_also_on_thesis_degraded(self) -> None:
+        await self.build(PositionRules(manage_foreign=False, news_action="close"))
+        self.gw.next_magic = 999
+        await self.open_buy()
+        (pos,) = await self.gw.get_positions()
+        acts = await self.pm.on_thesis_degraded(pos, ("annonce imminente (USD CPI)",), await self.gw.get_tick("EURUSD"), EURUSD)
+        self.assertEqual(acts, [])
+        (p,) = await self.gw.get_positions()
+        self.assertEqual((p.volume, p.sl), (0.20, 1.0820))
+
     async def test_foreign_positions_are_managed_by_default(self) -> None:
         await self.build(PositionRules())
         self.gw.next_magic = 999

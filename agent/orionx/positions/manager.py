@@ -127,10 +127,14 @@ class PositionManager:
         if self._bus:
             await self._bus.publish(PositionAdjusted(pos.ticket, action, detail))
 
+    def _left_alone(self, pos: Position) -> bool:
+        """Position ouverte à la main, laissée à l'utilisateur (selon la configuration)."""
+        return not self._rules.manage_foreign and pos.magic != ORIONX_MAGIC
+
     async def _manage(self, pos: Position, tick: Tick, spec: SymbolSpec, now: datetime, atr: float | None = None) -> list[str]:
         actions: list[str] = []
-        if not self._rules.manage_foreign and pos.magic != ORIONX_MAGIC:
-            return actions  # position ouverte à la main : laissée à l'utilisateur (selon la configuration)
+        if self._left_alone(pos):
+            return actions
         buy = pos.side is Side.BUY
         if pos.ticket not in self._first_seen:
             self._first_seen[pos.ticket] = now
@@ -180,6 +184,8 @@ class PositionManager:
 
         Le stop n'est jamais éloigné du prix."""
         actions: list[str] = []
+        if self._left_alone(pos):
+            return actions
         why = ", ".join(reasons)
         action = choose_action(reasons, self._rules)
         if action == "CLOSE":
