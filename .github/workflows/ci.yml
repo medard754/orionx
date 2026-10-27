@@ -18,9 +18,6 @@ jobs:
       - run: pip install -e ".[dev]"
       # BLOQUANT : les tests doivent passer.
       - run: python -m unittest discover -s tests -t . -v
-      # Non bloquants au départ (le code n'a pas encore été passé au linter) :
-      # corriger puis retirer « continue-on-error ».
+      # BLOQUANTS (T-10) : style et typage strict. Versions des outils bornées dans pyproject.toml.
       - run: ruff check .
-        continue-on-error: true
       - run: mypy
-        continue-on-error: true

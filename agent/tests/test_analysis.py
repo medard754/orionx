@@ -1,14 +1,14 @@
 import math
 import tempfile
 import unittest
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 from orionx.analysis.calendar import EconomicCalendar, currencies_of
 from orionx.analysis.filters import FILTERS, combine, no_high_vol, sessions, trend_aligned
 from orionx.analysis.state import MarketState, Regime, Session, analyze, session_of
 from orionx.analysis.thesis import ThesisMonitor
-from orionx.analysis.tzutil import _last_sunday, estimate_offset, eu_dst_active, eet_offset, server_to_utc_eet
+from orionx.analysis.tzutil import _last_sunday, eet_offset, estimate_offset, eu_dst_active, server_to_utc_eet
 from orionx.backtest.runner import run_backtest
 from orionx.connector_mt5.simulated import SimulatedGateway
 from orionx.core.config import AnalysisConfig, RiskConfig, load_config
@@ -20,7 +20,7 @@ from orionx.risk.manager import RiskManager
 from orionx.strategies.trend_pullback import TrendPullback
 from tests.helpers import EURUSD, SPECS, T0, FixedClock, account, proposal, synthetic_bars, tick
 
-UTC = timezone.utc
+UTC = UTC
 CFG = AnalysisConfig()
 
 

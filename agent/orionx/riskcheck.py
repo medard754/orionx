@@ -6,7 +6,7 @@ réduction ou refus par exposition, week-end, spread...). Les contrôles d'annon
 
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Awaitable, Callable
 from datetime import timedelta
 
 from orionx.connector_mt5.gateway import Gateway
@@ -18,7 +18,8 @@ from orionx.risk.manager import RiskManager
 
 
 async def check_proposal(gw: Gateway, cfg: AppConfig, symbol: str, side: Side, sl_pips: float = 20.0, rr: float = 3.0,
-                         out: Callable[[str], None] = print, sleep=None, risk_cfg: RiskConfig | None = None) -> int:  # type: ignore[no-untyped-def]  # fmt: skip
+                         out: Callable[[str], None] = print, sleep: Callable[[float], Awaitable[None]] | None = None,
+                         risk_cfg: RiskConfig | None = None) -> int:
     """`risk_cfg` : la configuration de risque que l'agent utiliserait réellement (RiskParamGuard.preview), pas config.yaml."""
     import asyncio
 

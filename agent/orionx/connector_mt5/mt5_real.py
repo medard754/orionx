@@ -9,10 +9,11 @@ Règle d'or : MT5 n'est pas thread-safe. Tous les appels passent par UN SEUL thr
 from __future__ import annotations
 
 import asyncio
+from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from functools import partial
-from typing import Any, Callable, TypeVar
+from typing import Any, TypeVar
 
 from orionx.core.errors import GatewayError
 from orionx.core.models import ORIONX_MAGIC, AccountState, Bar, OrderResult, Position, Side, SymbolSpec, Tick, utcnow
@@ -57,7 +58,8 @@ class Mt5Gateway:
         if not ok:
             code, text = mt5.last_error()
             hint = {
-                -6: " (identifiants refusés : vérifiez login / mot de passe / serveur, ou retirez-les pour utiliser le compte déjà connecté)",
+                -6: " (identifiants refusés : vérifiez login / mot de passe / serveur,"
+                    " ou retirez-les pour utiliser le compte déjà connecté)",
                 -10003: " (terminal MT5 introuvable ou non lancé)",
             }.get(code, "")
             raise GatewayError(f"initialize() a échoué : ({code}, {text!r}){hint}")
@@ -130,7 +132,7 @@ class Mt5Gateway:
                 self._last_seen[symbol] = (msc, received)
             else:
                 received = prev[1]
-            return Tick(symbol, t.bid, t.ask, datetime.fromtimestamp(t.time, tz=timezone.utc), received)
+            return Tick(symbol, t.bid, t.ask, datetime.fromtimestamp(t.time, tz=UTC), received)
 
         return await self._run(f)
 
@@ -149,7 +151,7 @@ class Mt5Gateway:
                 raise GatewayError(f"Aucune bougie pour {symbol} {timeframe} : {mt5.last_error()}")
             bars = [
                 Bar(
-                    datetime.fromtimestamp(int(r["time"]), tz=timezone.utc),
+                    datetime.fromtimestamp(int(r["time"]), tz=UTC),
                     float(r["open"]), float(r["high"]), float(r["low"]), float(r["close"]), float(r["tick_volume"]),
                 )
                 for r in rates
@@ -171,7 +173,7 @@ class Mt5Gateway:
                     sl=r.sl or None,
                     tp=r.tp or None,
                     profit=r.profit,
-                    opened_at=datetime.fromtimestamp(r.time, tz=timezone.utc),
+                    opened_at=datetime.fromtimestamp(r.time, tz=UTC),
                     comment=str(getattr(r, "comment", "") or ""),
                     magic=int(getattr(r, "magic", 0) or 0),
                 )

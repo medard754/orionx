@@ -2,11 +2,11 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 
 def _last_sunday(year: int, month: int) -> datetime:  # mars et octobre ont 31 jours
-    d = datetime(year, month, 31, 1, tzinfo=timezone.utc)
+    d = datetime(year, month, 31, 1, tzinfo=UTC)
     while d.weekday() != 6:
         d -= timedelta(days=1)
     return d

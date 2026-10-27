@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import sqlite3
 from collections.abc import Callable, Sequence
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 from orionx.connector_mt5.gateway import Gateway
@@ -17,7 +17,7 @@ TF_MINUTES = {"M1": 1, "M5": 5, "M15": 15, "M30": 30, "H1": 60, "H4": 240, "D1":
 
 def _floor(t: datetime, minutes: int) -> datetime:
     ts = int(t.timestamp())
-    return datetime.fromtimestamp(ts - ts % (minutes * 60), tz=timezone.utc)
+    return datetime.fromtimestamp(ts - ts % (minutes * 60), tz=UTC)
 
 
 class BarBuilder:

@@ -1,6 +1,6 @@
 import tempfile
 import unittest
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 from orionx.connector_mt5.simulated import SimulatedGateway
@@ -11,9 +11,9 @@ from orionx.positions.manager import PositionManager, PositionRules, choose_acti
 from orionx.risk.approval import ApprovalSigner
 from orionx.risk.guard import RiskParamGuard, is_riskier
 from orionx.risk.manager import RiskManager
-from tests.helpers import EURUSD, SPECS, T0, FixedClock, account, manager, proposal, tick
+from tests.helpers import EURUSD, SPECS, T0, FixedClock, account, proposal, tick
 
-UTC = timezone.utc
+UTC = UTC
 GBPUSD = SymbolSpec("GBPUSD", 5, 1e-5, 1e-5, 1.0, 0.01, 100.0, 0.01)
 SPECS2 = {"EURUSD": EURUSD, "GBPUSD": GBPUSD}
 

@@ -130,6 +130,7 @@ def attach(bus: EventBus, audit: AuditLog) -> None:
 
     for cls in (
         ev.TradeProposed, ev.TradeApproved, ev.TradeRejected, ev.OrderFilled, ev.OrderFailed,
-        ev.CircuitBreakerTripped, ev.KillSwitchActivated, ev.DataStale, ev.DataRecovered, ev.PositionAdjusted, ev.MarketStateUpdated, ev.ThesisDegraded, ev.ExecutionQuality, ev.DecisionNote,
+        ev.CircuitBreakerTripped, ev.KillSwitchActivated, ev.DataStale, ev.DataRecovered, ev.PositionAdjusted,
+        ev.MarketStateUpdated, ev.ThesisDegraded, ev.ExecutionQuality, ev.DecisionNote,
     ):  # fmt: skip
         bus.subscribe(cls, record)

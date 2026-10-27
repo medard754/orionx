@@ -5,7 +5,7 @@ from datetime import timedelta
 from orionx.core.config import RiskConfig
 from orionx.core.models import Position, Side, Tick
 from orionx.risk.sizing import risk_per_lot
-from tests.helpers import SPECS, T0, EURUSD, account, manager, proposal, tick
+from tests.helpers import EURUSD, SPECS, T0, account, manager, proposal, tick
 
 
 def pos(vol: float = 0.1, sl: float | None = 1.0820, side: Side = Side.BUY, ticket: int = 1) -> Position:

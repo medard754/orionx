@@ -13,6 +13,7 @@ from collections.abc import Callable
 from dataclasses import asdict, dataclass, fields
 from datetime import datetime, timedelta
 from pathlib import Path
+from typing import Any
 
 from orionx.core.config import RiskConfig
 from orionx.core.errors import ConfigError
@@ -61,7 +62,7 @@ class RiskParamGuard:
 
     # --- fichiers -----------------------------------------------------------------
     @staticmethod
-    def _write(path: Path, data: dict) -> None:
+    def _write(path: Path, data: dict[str, Any]) -> None:
         """Écriture atomique : un crash pendant l'écriture laisse l'ancien fichier intact, jamais un fichier tronqué."""
         tmp = path.with_suffix(".tmp")
         tmp.write_text(json.dumps(data), encoding="utf-8")

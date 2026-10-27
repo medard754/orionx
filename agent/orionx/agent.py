@@ -13,6 +13,7 @@ Les positions ouvertes ont toujours un stop-loss serveur : arrêter l'agent ne l
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import logging
 import time
 from collections.abc import Callable
@@ -40,11 +41,11 @@ from orionx.core.events import (
 )
 from orionx.core.models import OrderResult, Position, SymbolSpec, TradeProposal, utcnow
 from orionx.data.engine import MarketData, MarketStore
+from orionx.decision.engine import Candidate, DecisionEngine, EngineResult, StrategyEntry
 from orionx.execution.executor import Executor
 from orionx.monitoring.flag import read_kill_flag
 from orionx.monitoring.killswitch import KillSwitch
 from orionx.positions.manager import PositionManager, PositionRules
-from orionx.decision.engine import Candidate, DecisionEngine, EngineResult, StrategyEntry
 from orionx.risk.approval import ApprovalSigner
 from orionx.risk.guard import RiskParamGuard
 from orionx.risk.manager import RiskManager
@@ -98,7 +99,6 @@ class Agent:
                                 extra_checks=(self._news_check, self._regime_check))  # fmt: skip
         self.executor = Executor(gateway, self.signer, self.bus)
         self.kill = KillSwitch(gateway, self.executor, self.risk, self.bus)
-        a = cfg.analysis
         rules = rules or cfg.positions.to_rules()
         self.positions = PositionManager(gateway, rules, self.bus, clock)
         self.thesis = ThesisMonitor(self._blackout_title)
@@ -162,10 +162,12 @@ class Agent:
             previous = self.states.get(sym)
             self.states[sym] = state
             if previous is None or (previous.regime, previous.session) != (state.regime, state.session):
-                await self.bus.publish(MarketStateUpdated(sym, state.regime.value, state.session.value, round(state.volatility_ratio, 3),
-                                                          round(state.trend_strength, 3), round(state.efficiency, 3), state.atr))  # fmt: skip
+                await self.bus.publish(
+                    MarketStateUpdated(sym, state.regime.value, state.session.value, round(state.volatility_ratio, 3),
+                                       round(state.trend_strength, 3), round(state.efficiency, 3), state.atr)
+                )  # fmt: skip
 
-    async def _check_theses(self, positions: list[Position], rep: "CycleReport") -> None:
+    async def _check_theses(self, positions: list[Position], rep: CycleReport) -> None:
         self.thesis.forget(p.ticket for p in positions)
         now = self._now_utc()
         for pos in positions:
@@ -199,7 +201,8 @@ class Agent:
                 if bars:
                     self._last_bar[s] = bars[-1].time
         self._log("AgentStarted", {"autonomy": self.autonomy, "symbols": self.cfg.symbols, "equity": acc.equity,
-                                   "strategies": [e.strategy.name for e in self.engine.entries if e.enabled] if self.engine else [], "open_positions": len(self._prev),
+                                   "strategies": [e.strategy.name for e in self.engine.entries if e.enabled] if self.engine else [],
+                                   "open_positions": len(self._prev),
                                    "risk_startup": self.guard.startup_note if self.guard else None})  # fmt: skip
 
     async def shutdown(self) -> None:
@@ -213,10 +216,8 @@ class Agent:
                 await self.run_cycle()
                 if max_cycles is not None and self.cycles >= max_cycles:
                     break
-                try:
+                with contextlib.suppress(TimeoutError):
                     await asyncio.wait_for(stop.wait(), timeout=max(0.0, cycle_seconds - (time.monotonic() - t0)))
-                except TimeoutError:
-                    pass
         finally:
             await self.shutdown()
 
@@ -319,9 +320,11 @@ class Agent:
             rep.orders += int(result.ok)
         elif self.autonomy == "semi_auto":
             self.pending[proposal.id] = proposal
-            self._log("SignalPending", {"proposal": proposal, "score": cand.score, "rr": cand.rr, "strategies": cand.strategies, "notes": decision.notes})
+            self._log("SignalPending", {"proposal": proposal, "score": cand.score, "rr": cand.rr,
+                                        "strategies": cand.strategies, "notes": decision.notes})  # fmt: skip
         else:
-            self._log("SignalOnly", {"proposal": proposal, "score": cand.score, "rr": cand.rr, "strategies": cand.strategies, "notes": decision.notes})
+            self._log("SignalOnly", {"proposal": proposal, "score": cand.score, "rr": cand.rr,
+                                     "strategies": cand.strategies, "notes": decision.notes})  # fmt: skip
 
     async def approve(self, proposal_id: str) -> OrderResult:
         """Approbation humaine (semi_auto) : le risque est RE-ÉVALUÉ avec les prix du moment."""

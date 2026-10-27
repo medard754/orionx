@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from dataclasses import dataclass, field
+from typing import TypedDict
 
 from orionx.analysis.filters import EntryFilter
 from orionx.analysis.state import analyze
@@ -17,6 +18,18 @@ from orionx.core.config import AnalysisConfig
 from orionx.core.models import Bar, Side, SymbolSpec, Tick
 from orionx.risk.sizing import position_size
 from orionx.strategies.trend_pullback import Strategy
+
+
+class BacktestParams(TypedDict, total=False):
+    """Réglages de run_backtest passés en bloc (**params) : mypy vérifie chaque clé et son type."""
+
+    balance: float
+    risk_pct: float
+    spread_points: float
+    commission_per_lot: float
+    min_rr: float
+    entry_filter: EntryFilter | None
+    analysis: AnalysisConfig | None
 
 
 @dataclass(frozen=True)

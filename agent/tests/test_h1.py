@@ -20,7 +20,7 @@ from orionx.backtest.h1 import (
 from orionx.backtest.runner import BacktestResult, Trade
 from orionx.backtest.walkforward import RandomReference
 from orionx.strategies.trend_pullback import TrendPullback
-from tests.helpers import EURUSD, T0, synthetic_bars
+from tests.helpers import EURUSD, synthetic_bars
 
 
 def res(trades=60, pf=1.5, dd=5.0, net=100.0) -> BacktestResult:

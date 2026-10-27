@@ -1,5 +1,4 @@
 import unittest
-from datetime import timedelta
 
 from orionx.connector_mt5.simulated import SimulatedGateway
 from orionx.core.models import Side, Tick
