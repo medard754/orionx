@@ -12,6 +12,9 @@ from datetime import datetime, timezone
 from enum import Enum
 
 
+ORIONX_MAGIC = 261012  # identifiant des ordres passés par ORIONX (distingue des ordres manuels)
+
+
 def utcnow() -> datetime:
     return datetime.now(timezone.utc)
 
@@ -116,6 +119,8 @@ class Position:
     tp: float | None
     profit: float
     opened_at: datetime
+    comment: str = ""
+    magic: int = 0
 
 
 @dataclass(frozen=True)
@@ -155,6 +160,7 @@ class ApprovedOrder:
     max_slippage_points: int
     expires_at: datetime
     signature: str = ""
+    ref_price: float = 0.0  # prix de référence au moment de la décision (0 = inconnu) : sert au contrôle du slippage
 
     def __post_init__(self) -> None:
         _require(self.volume > 0, "volume doit être > 0")
@@ -171,6 +177,7 @@ class ApprovedOrder:
             "tp": self.tp,
             "max_slippage_points": self.max_slippage_points,
             "expires_at": self.expires_at.isoformat(),
+            "ref_price": self.ref_price,
         }
         return json.dumps(payload, sort_keys=True, separators=(",", ":")).encode()
 

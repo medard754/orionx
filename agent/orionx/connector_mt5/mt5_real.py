@@ -15,10 +15,10 @@ from functools import partial
 from typing import Any, Callable, TypeVar
 
 from orionx.core.errors import GatewayError
-from orionx.core.models import AccountState, Bar, OrderResult, Position, Side, SymbolSpec, Tick, utcnow
+from orionx.core.models import ORIONX_MAGIC, AccountState, Bar, OrderResult, Position, Side, SymbolSpec, Tick, utcnow
 
 T = TypeVar("T")
-MAGIC = 26_10_12  # identifiant des ordres ORIONX
+MAGIC = ORIONX_MAGIC  # identifiant des ordres ORIONX
 
 
 class Mt5Gateway:
@@ -172,6 +172,8 @@ class Mt5Gateway:
                     tp=r.tp or None,
                     profit=r.profit,
                     opened_at=datetime.fromtimestamp(r.time, tz=timezone.utc),
+                    comment=str(getattr(r, "comment", "") or ""),
+                    magic=int(getattr(r, "magic", 0) or 0),
                 )
                 for r in rows
             ]

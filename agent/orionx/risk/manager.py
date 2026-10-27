@@ -51,8 +51,11 @@ class RiskManager:
         *,
         max_data_age_seconds: float = 3.0,
         clock: Callable[[], datetime] = utcnow,
+        extra_checks: Sequence[Callable[[TradeProposal, Tick, datetime], str | None]] = (),
     ) -> None:
+        """extra_checks : règles déterministes supplémentaires (annonces, volatilité...). Renvoient un code de rejet ou None."""
         self._cfg, self._signer, self._clock = cfg, signer, clock
+        self._extra = tuple(extra_checks)
         self._max_age = max_data_age_seconds
         self.state = RiskState()
 
@@ -101,6 +104,14 @@ class RiskManager:
         """Levée MANUELLE d'un arrêt (ex. MAX_DRAWDOWN, KILL_SWITCH) par l'utilisateur."""
         self.state.halts.discard(reason)
 
+    @property
+    def cfg(self) -> RiskConfig:
+        return self._cfg
+
+    def apply_config(self, cfg: RiskConfig) -> None:
+        """Remplace la configuration (appelé uniquement par RiskParamGuard, après le délai de sécurité)."""
+        self._cfg = cfg
+
     # --- décision -----------------------------------------------------------------
     def evaluate(
         self,
@@ -135,8 +146,10 @@ class RiskManager:
             reasons.append("INVALID_SL")
         if not tp_ok:
             reasons.append("INVALID_TP")
-        if tick.spread / spec.point > c.max_spread_points:
+        if tick.spread / spec.point > c.max_spread_points_by_symbol.get(proposal.symbol, c.max_spread_points):
             reasons.append("SPREAD_TOO_WIDE")
+        if c.weekend_guard and _weekend_closed(now, c.weekend_no_entry_from_utc):
+            reasons.append("WEEKEND_GUARD")
         if len(positions) >= c.max_open_positions:
             reasons.append("MAX_POSITIONS")
         if account.margin_level is not None and account.margin_level < c.min_margin_level_pct:
@@ -144,8 +157,14 @@ class RiskManager:
         if sl_ok and tp_ok and abs(tp - entry) / abs(entry - sl) < c.min_rr:
             reasons.append("RR_TOO_LOW")
 
+        for check in self._extra:
+            code = check(proposal, tick, now)
+            if code:
+                reasons.append(code)
+
         capital = min(account.balance, account.equity)
         open_pct = 0.0
+        net: dict[str, float] = {}  # risque NET (en % du capital) par devise : + long, - short
         for p in positions:
             pspec = specs.get(p.symbol)
             if p.sl is None or pspec is None:
@@ -153,14 +172,25 @@ class RiskManager:
                 break
             distance = (p.price_open - p.sl) if p.side is Side.BUY else (p.sl - p.price_open)
             cash = max(0.0, distance) / pspec.tick_size * pspec.tick_value * p.volume
-            open_pct += cash / capital * 100 if capital > 0 else 100.0
+            pct = cash / capital * 100 if capital > 0 else 100.0
+            open_pct += pct
+            base, quote = p.symbol[:3], p.symbol[3:6]
+            sign = 1.0 if p.side is Side.BUY else -1.0
+            net[base] = net.get(base, 0.0) + sign * pct
+            net[quote] = net.get(quote, 0.0) - sign * pct
 
         volume = 0.0
         if not reasons:
             allowed_pct = min(c.risk_per_trade_pct, c.max_total_open_risk_pct - open_pct)
-            if allowed_pct <= 0:
+            base, quote = proposal.symbol[:3], proposal.symbol[3:6]
+            long_cur, short_cur = (base, quote) if buy else (quote, base)
+            room = min(c.max_currency_exposure_pct - net.get(long_cur, 0.0), c.max_currency_exposure_pct + net.get(short_cur, 0.0))
+            if allowed_pct > 0 and room <= 0:
+                reasons.append("CURRENCY_EXPOSURE")
+            elif allowed_pct <= 0:
                 reasons.append("TOTAL_RISK_EXCEEDED")
             else:
+                allowed_pct = min(allowed_pct, room)
                 volume = position_size(capital, allowed_pct, entry, sl, spec)
                 if volume <= 0:
                     reasons.append("VOLUME_BELOW_MIN")
@@ -178,8 +208,15 @@ class RiskManager:
             tp=tp,
             max_slippage_points=c.max_slippage_points,
             expires_at=now + timedelta(seconds=c.approval_ttl_seconds),
+            ref_price=entry,
         )
         return Decision(True, order=self._signer.sign(order), notes=tuple(notes))
+
+
+def _weekend_closed(now: datetime, no_entry_from_hour: int) -> bool:
+    """Vendredi à partir de `no_entry_from_hour` (UTC), samedi, dimanche avant 22h UTC : pas de nouvelle entrée."""
+    wd = now.weekday()
+    return (wd == 4 and now.hour >= no_entry_from_hour) or wd == 5 or (wd == 6 and now.hour < 22)
 
 
 def _loss_pct(reference: float, equity: float) -> float:

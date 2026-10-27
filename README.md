@@ -36,14 +36,18 @@ copy config.example.yaml config.yaml
 ## Commandes utiles (depuis `agent/`)
 
 ```powershell
-python -m unittest discover -s tests -t . -v   # 101 tests, sans MT5
+python -m unittest discover -s tests -t . -v   # 192 tests, sans MT5
 python -m orionx.main simulate                 # scénario complet sur courtier simulé
 ruff check . ; mypy                            # qualité (voir PROJECT_STATUS T-10)
 python -m orionx.main run                      # boucle de l'agent (n'envoie AUCUN ordre par défaut)
 python -m orionx.main kill --level 3           # arrêt d'urgence depuis un autre terminal
 python -m orionx.main clear-kill               # lève le drapeau d'arrêt d'urgence
 python -m orionx.main audit-verify             # intégrité du journal (data/audit.db)
-python -m orionx.main backtest --bars 3000     # backtest sur l'historique MT5 (lecture seule)
+python -m orionx.main backtest --bars 15000 --filters none,vol,session,trend  # backtest comparé au hasard (lecture seule)
+python -m orionx.main risk-set --profile moderate  # hausse du risque : appliquée après 24 h
+python -m orionx.main risk-status              # configuration de risque active ou en attente
+python -m orionx.main risk-check --symbol EURUSD --side buy  # que déciderait le risque ? (aucun ordre envoyé)
+python -m orionx.main state                    # état du marché et annonces à venir (analysis.calendar_path)
 ```
 
 Exécution automatique des ordres : il faut **deux** réglages explicites, `autonomy: auto` dans `config.yaml`
@@ -68,6 +72,8 @@ agent/orionx/
   audit/          journal d'audit SQLite chaîné par hachage (T-03)
   monitoring/     arrêt d'urgence à 3 niveaux + drapeau sur disque (T-05)
   data/           ticks, bougies, données périmées, stockage SQLite (T-04)
+  decision/       moteur de décision M4 : stratégies par régime, conflits, classement par devise
+  analysis/       état du marché, calendrier d'annonces, surveillance de la thèse, filtres (M3 v1)
   positions/      breakeven, stop suiveur, sortie partielle (T-07)
   strategies/     indicateurs + stratégie tendance/repli H1 (T-12)
   backtest/       backtest avec coûts (T-12)

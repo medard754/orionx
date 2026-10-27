@@ -7,6 +7,7 @@ from datetime import datetime
 
 from orionx.core.errors import GatewayError
 from orionx.core.models import (
+    ORIONX_MAGIC,
     AccountState,
     Bar,
     OrderResult,
@@ -41,6 +42,10 @@ class SimulatedGateway:
         self.fail_close = fail_close
         self._bars: dict[tuple[str, str], list[Bar]] = {}
         self.orders_sent = 0
+        self.fail_codes: list[int] = []  # rejets scriptés (un code consommé par ordre)
+        self.timeout_but_executed = False  # l'ordre est exécuté mais la réponse est un délai dépassé
+        self.slippage_points = 0.0  # glissement défavorable appliqué aux exécutions
+        self.next_magic: int | None = None  # pour simuler une position ouverte à la main
 
     # --- pilotage du simulateur -------------------------------------------------
     def set_tick(self, symbol: str, bid: float, ask: float, time: datetime) -> None:
@@ -98,13 +103,18 @@ class SimulatedGateway:
         comment: str,
     ) -> OrderResult:
         self.orders_sent += 1
+        if self.fail_codes:
+            return OrderResult.fail("Rejet (simulé)", retcode=self.fail_codes.pop(0))
         if self.reject_next:
             self.reject_next = False
             return OrderResult.fail("Requote (simulé)", retcode=10004)
         tick = await self.get_tick(symbol)
-        price = tick.ask if side is Side.BUY else tick.bid
+        spec = self._specs[symbol]
+        slip = self.slippage_points * spec.point
+        price = tick.ask + slip if side is Side.BUY else tick.bid - slip
         ticket = self._next_ticket
         self._next_ticket += 1
+        magic, self.next_magic = (self.next_magic if self.next_magic is not None else ORIONX_MAGIC), None
         self._positions[ticket] = Position(
             ticket=ticket,
             symbol=symbol,
@@ -115,7 +125,11 @@ class SimulatedGateway:
             tp=None if self.drop_sl_on_fill else tp,
             profit=0.0,
             opened_at=tick.time,
+            comment=comment,
+            magic=magic,
         )
+        if self.timeout_but_executed:
+            return OrderResult.fail("Délai dépassé (simulé)", retcode=10012)
         return OrderResult(ok=True, ticket=ticket, price=price, retcode=10009)
 
     async def modify_position(self, ticket: int, sl: float, tp: float) -> OrderResult:
@@ -124,9 +138,7 @@ class SimulatedGateway:
             return OrderResult.fail("Position introuvable")
         if self.fail_modify:
             return OrderResult.fail("Modification refusée (simulé)", retcode=10016)
-        self._positions[ticket] = Position(
-            pos.ticket, pos.symbol, pos.side, pos.volume, pos.price_open, sl, tp, pos.profit, pos.opened_at
-        )
+        self._positions[ticket] = replace(pos, sl=sl, tp=tp)
         return OrderResult(ok=True, ticket=ticket, retcode=10009)
 
     async def close_position(self, ticket: int, volume: float | None = None) -> OrderResult:
@@ -162,10 +174,7 @@ class SimulatedGateway:
         return self._pnl_at(pos, tick.bid if pos.side is Side.BUY else tick.ask)
 
     def _with_profit(self, pos: Position) -> Position:
-        return Position(
-            pos.ticket, pos.symbol, pos.side, pos.volume, pos.price_open,
-            pos.sl, pos.tp, self._pnl(pos), pos.opened_at,
-        )  # fmt: skip
+        return replace(pos, profit=self._pnl(pos))
 
     def _close(self, pos: Position, price: float) -> None:
         profit = self._pnl_at(pos, price)

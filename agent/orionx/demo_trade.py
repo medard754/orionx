@@ -46,6 +46,7 @@ async def run_demo_trade(
     sl_pips: float = 20.0,
     tp_pips: float = 60.0,
     hold_seconds: float = 10.0,
+    weekend_guard: bool = True,
     confirm: Callable[[str], bool],
     out: Callable[[str], None] = print,
     sleep: Callable[[float], Awaitable[None]] = asyncio.sleep,
@@ -73,9 +74,14 @@ async def run_demo_trade(
     )  # fmt: skip
 
     signer = ApprovalSigner()
-    risk = RiskManager(RiskConfig(risk_per_trade_pct=TEST_RISK_PCT), signer, max_data_age_seconds=3.0)
+    risk = RiskManager(RiskConfig(risk_per_trade_pct=TEST_RISK_PCT, weekend_guard=weekend_guard), signer, max_data_age_seconds=3.0)
     risk.start(account)
-    decision = risk.evaluate(proposal, tick, account, await gw.get_positions(), {symbol: spec})
+    positions_now = await gw.get_positions()
+    specs = {symbol: spec}
+    for p in positions_now:  # positions déjà ouvertes (même sur d'autres paires) : nécessaires au calcul d'exposition
+        if p.symbol not in specs:
+            specs[p.symbol] = await gw.get_symbol_spec(p.symbol)
+    decision = risk.evaluate(proposal, tick, account, positions_now, specs)
     if not decision.approved or decision.order is None:
         out(f"Gestionnaire de risques : REFUS {decision.reasons}")
         return 5
@@ -86,11 +92,16 @@ async def run_demo_trade(
         out("Annulé. Aucun ordre envoyé.")
         return 6
 
-    result = await Executor(gw, signer).execute(order)
+    executor = Executor(gw, signer)
+    result = await executor.execute(order)
     if not result.ok:
         out(f"ÉCHEC : {result.message} (code {result.retcode}). {HINTS.get(result.retcode or 0, '')}")
         return 7
     out(f"Ordre exécuté : ticket {result.ticket} au prix {result.price}")
+    if executor.reports:
+        q = executor.reports[-1]
+        slip = f"{q.slippage_points:+.1f} point(s)" if q.slippage_points is not None else "n/d"
+        out(f"Qualité d'exécution : {q.attempts} tentative(s), latence {q.latency_ms:.0f} ms, glissement défavorable {slip}")
 
     positions = [p for p in await gw.get_positions() if p.ticket == result.ticket]
     if not positions:

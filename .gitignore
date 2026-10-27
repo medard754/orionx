@@ -29,3 +29,8 @@ logs/
 .DS_Store
 Thumbs.db
 node_modules/
+
+# Config locale / calendrier (propres à chaque machine)
+calendar.csv
+config.*.yaml
+!config.example.yaml

@@ -8,6 +8,10 @@
   python -m orionx.main clear-kill        # retire le drapeau d'arrêt d'urgence
   python -m orionx.main audit-verify      # vérifie l'intégrité du journal
   python -m orionx.main backtest          # backtest de la stratégie sur l'historique MT5 (lecture seule)
+  python -m orionx.main risk-set --profile moderate   # changer de profil de risque (hausse = délai de 24 h)
+  python -m orionx.main risk-status       # configuration de risque active / en attente
+  python -m orionx.main risk-check --symbol EURUSD --side buy   # que déciderait le risque ? (aucun ordre)
+  python -m orionx.main state             # état du marché (régime, séance, volatilité) et annonces à venir
 """
 
 from __future__ import annotations
@@ -134,15 +138,26 @@ async def run_agent(cfg: AppConfig, allow_auto: bool, cycle: float, max_cycles: 
     from orionx.agent import Agent
     from orionx.audit.log import AuditLog
     from orionx.data.engine import MarketStore
-    from orionx.strategies.trend_pullback import TrendPullback
+    from orionx.decision.registry import build_engine
+    from orionx.risk.guard import RiskParamGuard
 
     gw = _mt5_gateway()
     if gw is None:
         return 2
+    from orionx.analysis.calendar import EconomicCalendar
+
     audit = AuditLog(AUDIT_DB)
+    calendar = None
+    if cfg.analysis.calendar_path:
+        calendar = EconomicCalendar.from_csv(cfg.analysis.calendar_path)
+        print(f"Calendrier économique : {len(calendar.events)} événements chargés ({cfg.analysis.calendar_path}).")
+    else:
+        print("Aucun calendrier économique configuré : pas de blocage autour des annonces (analysis.calendar_path).")
     await gw.connect()
-    agent = Agent(gw, cfg, strategy=TrendPullback(), audit=audit, store=MarketStore(DATA_DIR / "market.db"),
-                  allow_auto=allow_auto, kill_flag=KILL_FLAG)  # fmt: skip
+    engine = build_engine(cfg.strategies, cfg.decision, cfg.analysis)
+    agent = Agent(gw, cfg, engine=engine, risk_guard=RiskParamGuard(DATA_DIR), audit=audit, store=MarketStore(DATA_DIR / "market.db"),
+                  calendar=calendar, allow_auto=allow_auto, kill_flag=KILL_FLAG)  # fmt: skip
+    print(f"Stratégies activées : {list(cfg.strategies)} · profil de risque actif : {agent.risk.cfg.risk_per_trade_pct} % par trade.")
     print(f"Agent démarré : autonomie={agent.autonomy}, symboles={cfg.symbols}. Ctrl+C pour arrêter.")
     print("Les positions ouvertes restent protégées par leur stop-loss même si l'agent s'arrête.")
     try:
@@ -183,6 +198,39 @@ async def kill_cmd(level: int, auto_yes: bool) -> int:
     return 0
 
 
+async def riskcheck_cmd(cfg: AppConfig, symbol: str, side: str, sl_pips: float) -> int:
+    from orionx.core.models import Side
+    from orionx.riskcheck import check_proposal
+
+    gw = _mt5_gateway()
+    if gw is None:
+        return 2
+    await gw.connect()
+    try:
+        return await check_proposal(gw, cfg, symbol, Side(side), sl_pips)
+    finally:
+        await gw.shutdown()
+
+
+def risk_cmd(command: str, profile: str | None) -> int:
+    from orionx.core.config import risk_from_profile
+    from orionx.risk.guard import RiskParamGuard
+
+    guard = RiskParamGuard(DATA_DIR)
+    if command == "risk-status":
+        active, pending = guard.active(), guard.pending()
+        print("Configuration de risque ACTIVE :", active if active else "aucune (l'agent n'a jamais démarré)")
+        print("Changement en attente :", f"appliqué à partir de {pending[1]:%d/%m/%Y %H:%M} UTC -> {pending[0]}" if pending else "aucun")
+        return 0
+    if not profile:
+        print("Précisez --profile prudent|moderate|dynamic")
+        return 2
+    change = guard.request(risk_from_profile(profile))
+    when = f" (à partir de {change.effective_at:%d/%m/%Y %H:%M} UTC)" if change.effective_at else ""
+    print(f"Profil « {profile} » : {change.status}{when} - {change.note}.")
+    return 0
+
+
 def audit_cmd(tail: bool) -> int:
     from orionx.audit.log import AuditLog
 
@@ -199,13 +247,57 @@ def audit_cmd(tail: bool) -> int:
     return 0 if r.ok else 1
 
 
-async def backtest_cmd(symbol: str, n_bars: int, folds: int, csv_path: Path | None) -> int:
+async def state_cmd(cfg: AppConfig) -> int:
+    from orionx.analysis.calendar import EconomicCalendar
+    from orionx.analysis.state import analyze
+    from orionx.analysis.tzutil import server_to_utc_eet
+
+    gw = _mt5_gateway()
+    if gw is None:
+        return 2
+    cal = EconomicCalendar.from_csv(cfg.analysis.calendar_path) if cfg.analysis.calendar_path else None
+    await gw.connect()
+    try:
+        for sym in cfg.symbols:
+            bars = await gw.get_bars(sym, "H1", cfg.analysis.vol_window + 60)
+            st = analyze(sym, bars, cfg.analysis, server_to_utc_eet)
+            print(f"{sym} : régime={st.regime.value} · séance={st.session.value} · volatilité x{st.volatility_ratio:.2f} "
+                  f"· force de tendance {st.trend_strength:+.2f} · efficacité {st.efficiency:.2f} · ATR {st.atr:.5f}")
+            if cal:
+                for e in cal.upcoming(sym, utcnow(), 24, cfg.analysis.news_min_impact):
+                    print(f"   annonce {e.time:%d/%m %H:%M} UTC · {e.currency} · {e.impact} · {e.title}")
+    finally:
+        await gw.shutdown()
+    return 0
+
+
+def make_strategy(spec: str, cfg: AppConfig):  # type: ignore[no-untyped-def]
+    """`trend_pullback` (une stratégie seule, sans régime) · `engine:a,b` (moteur avec régimes) · `engine` (stratégies du config)."""
+    from orionx.decision.registry import AVAILABLE, build_engine
+
+    if spec.startswith("engine"):
+        names = tuple(n for n in spec.partition(":")[2].split(",") if n) or cfg.strategies
+        return build_engine(names, cfg.decision, cfg.analysis).as_strategy()
+    if spec not in AVAILABLE:
+        raise SystemExit(f"Stratégie inconnue : {spec}. Disponibles : {list(AVAILABLE)} ou engine[:a,b]")
+    return AVAILABLE[spec][0]()
+
+
+async def backtest_cmd(symbol: str, n_bars: int, folds: int, csv_path: Path | None, filters: str, random_runs: int,
+                       strategy: str = "trend_pullback", cfg: AppConfig | None = None) -> int:  # fmt: skip
     import csv
 
+    from orionx.analysis.filters import FILTERS
     from orionx.backtest.runner import run_backtest
     from orionx.backtest.walkforward import random_reference, split_folds
-    from orionx.strategies.trend_pullback import TrendPullback
+    cfg = cfg or AppConfig()
+    make_strategy(strategy, cfg)  # échoue tout de suite si le nom est inconnu
 
+    names = [f.strip() for f in filters.split(",") if f.strip()]
+    unknown = [n for n in names if n not in FILTERS]
+    if unknown:
+        print(f"Filtres inconnus : {unknown}. Disponibles : {list(FILTERS)}")
+        return 2
     gw = _mt5_gateway()
     if gw is None:
         return 2
@@ -214,41 +306,45 @@ async def backtest_cmd(symbol: str, n_bars: int, folds: int, csv_path: Path | No
         spec, bars = await gw.get_symbol_spec(symbol), await gw.get_bars(symbol, "H1", n_bars)
     finally:
         await gw.shutdown()
-    costs = {"spread_points": 10.0, "commission_per_lot": 7.0}
-    print(f"{len(bars)} bougies H1 de {symbol} ({bars[0].time:%Y-%m-%d} -> {bars[-1].time:%Y-%m-%d})")
+    print(f"{len(bars)} bougies H1 de {symbol} ({bars[0].time:%Y-%m-%d} -> {bars[-1].time:%Y-%m-%d}) · stratégie : {strategy}")
     if len(bars) < n_bars:
         print(f"Attention : MetaTrader n'a fourni que {len(bars)} bougies sur {n_bars} demandées.")
 
     def line(label: str, r) -> str:  # type: ignore[no-untyped-def]
-        return (f"{label:<12} trades={r.trades:>4}  gagnants={r.win_rate:>4.0%}  PF={r.profit_factor:>5.2f}  "
+        return (f"{label:<14} trades={r.trades:>4}  gagnants={r.win_rate:>4.0%}  PF={r.profit_factor:>5.2f}  "
                 f"net={r.net_profit:>+9.2f}  DD={r.max_drawdown_pct:>5.1f} %")  # fmt: skip
 
-    total = run_backtest(bars, TrendPullback(), spec, symbol, **costs)
-    print("\nSTRATÉGIE (toute la période)\n " + line("total", total))
-    if folds > 1 and len(bars) // folds >= 600:
-        print(f"\nPAR PÉRIODE ({folds} blocs consécutifs) : une stratégie fiable est stable d'un bloc à l'autre")
-        for i, part in enumerate(split_folds(bars, folds), 1):
-            r = run_backtest(part, TrendPullback(), spec, symbol, **costs)
-            print(" " + line(f"bloc {i} ({part[0].time:%m-%d})", r))
-    ref = random_reference(bars, spec, symbol, total.net_profit, runs=20, **costs)
-    print(f"\nTÉMOIN ALÉATOIRE ({ref.runs} tirages, mêmes stops, objectifs et coûts)")
-    print(f"  net moyen = {ref.mean_net:+.2f} (écart-type {ref.std_net:.2f}) · PF moyen = {ref.mean_pf:.2f}")
-    print(f"  la stratégie fait mieux que {ref.share_worse:.0%} des tirages aléatoires")
-    print("\nRésultats INDICATIFS (spread 1 pip, commission 7 $/lot). Un seul symbole, une seule période :")
-    print("ce n'est ni une preuve de rentabilité ni une promesse de gain.")
-    if csv_path:
+    summary, first_total = [], None
+    for name in names:
+        costs = {"spread_points": 10.0, "commission_per_lot": 7.0, "entry_filter": FILTERS[name]}
+        total = run_backtest(bars, make_strategy(strategy, cfg), spec, symbol, **costs)
+        first_total = first_total or total
+        print(f"\n=== FILTRE « {name} » ===\n " + line("total", total) + f"   (signaux écartés : {total.filtered})")
+        if folds > 1 and len(bars) // folds >= 600:
+            for i, part in enumerate(split_folds(bars, folds), 1):
+                print(" " + line(f"bloc {i} ({part[0].time:%m-%d})", run_backtest(part, make_strategy(strategy, cfg), spec, symbol, **costs)))
+        ref = random_reference(bars, spec, symbol, total.net_profit, runs=random_runs, **costs)
+        print(f"  témoin aléatoire ({ref.runs} tirages, même filtre, mêmes coûts) : net moyen {ref.mean_net:+.0f} "
+              f"(écart-type {ref.std_net:.0f}), PF moyen {ref.mean_pf:.2f} -> stratégie meilleure que {ref.share_worse:.0%} des tirages")
+        summary.append((name, total, ref))
+    print("\nRÉSUMÉ\n" + f"{'filtre':<10}{'trades':>8}{'PF':>7}{'net':>11}{'DD %':>7}{'bat le hasard':>15}")
+    for name, t, r in summary:
+        print(f"{name:<10}{t.trades:>8}{t.profit_factor:>7.2f}{t.net_profit:>+11.0f}{t.max_drawdown_pct:>7.1f}{r.share_worse:>14.0%}")
+    print("\nRésultats INDICATIFS (spread 1 pip, commission 7 $/lot, un symbole, une période). Comparer des filtres sur les MÊMES")
+    print("données les favorise : un filtre n'est retenu que s'il bat le hasard sur des données jamais regardées.")
+    if csv_path and first_total:
         with open(csv_path, "w", newline="", encoding="utf-8") as f:
             w = csv.writer(f)
             w.writerow(["ouverture", "sens", "entree", "sortie", "lots", "profit", "raison"])
-            for t in total.log:
+            for t in first_total.log:
                 w.writerow([t.opened, t.side, t.entry, t.exit, t.volume, round(t.profit, 2), t.reason])
-        print(f"Détail des trades : {csv_path}")
+        print(f"Détail des trades (premier filtre) : {csv_path}")
     return 0
 
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="orionx")
-    parser.add_argument("command", choices=["simulate", "mt5-check", "demo-trade", "run", "kill", "clear-kill", "audit-verify", "audit-tail", "backtest"])
+    parser.add_argument("command", choices=["simulate", "mt5-check", "demo-trade", "run", "kill", "clear-kill", "audit-verify", "audit-tail", "backtest", "state", "risk-set", "risk-status", "risk-check"])
     parser.add_argument("--yes", action="store_true", help="demo-trade : ne pas demander confirmation")
     parser.add_argument("--hold", type=float, default=10.0, help="demo-trade : secondes avant fermeture")
     parser.add_argument("--config", type=Path, default=None)
@@ -259,6 +355,12 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--symbol", default="EURUSD", help="backtest : symbole")
     parser.add_argument("--bars", type=int, default=3000, help="backtest : nombre de bougies H1")
     parser.add_argument("--folds", type=int, default=4, help="backtest : nombre de périodes consécutives")
+    parser.add_argument("--side", default="buy", choices=["buy", "sell"], help="risk-check : sens simulé")
+    parser.add_argument("--sl-pips", type=float, default=20.0, help="risk-check : distance du stop en pips")
+    parser.add_argument("--profile", default=None, help="risk-set : prudent | moderate | dynamic")
+    parser.add_argument("--strategy", default="trend_pullback", help="backtest : stratégie, ou engine[:a,b] (moteur avec régimes)")
+    parser.add_argument("--filters", default="none", help="backtest : filtres à comparer, ex. none,vol,session,trend,all")
+    parser.add_argument("--random-runs", type=int, default=20, help="backtest : nombre de tirages du témoin aléatoire")
     parser.add_argument("--csv", type=Path, default=None, help="backtest : exporte les trades en CSV")
     args = parser.parse_args(argv)
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
@@ -281,8 +383,14 @@ def main(argv: list[str] | None = None) -> int:
         return 0
     if args.command in ("audit-verify", "audit-tail"):
         return audit_cmd(args.command == "audit-tail")
+    if args.command == "risk-check":
+        return asyncio.run(riskcheck_cmd(cfg, args.symbol, args.side, args.sl_pips))
+    if args.command in ("risk-set", "risk-status"):
+        return risk_cmd(args.command, args.profile)
+    if args.command == "state":
+        return asyncio.run(state_cmd(cfg))
     if args.command == "backtest":
-        return asyncio.run(backtest_cmd(args.symbol, args.bars, args.folds, args.csv))
+        return asyncio.run(backtest_cmd(args.symbol, args.bars, args.folds, args.csv, args.filters, args.random_runs, args.strategy, cfg))
     if args.command == "demo-trade":
         return asyncio.run(demo_trade(args.yes, args.hold))
     return asyncio.run(mt5_check())

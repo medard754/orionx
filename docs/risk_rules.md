@@ -15,9 +15,14 @@
 | `UNPROTECTED_POSITION` | Une position ouverte n'a pas de SL : tout est bloqué | — | — |
 | `TOTAL_RISK_EXCEEDED` | Risque cumulé ouvert au plafond | 2 % | 4 % |
 | `VOLUME_BELOW_MIN` | Le lot minimal dépasserait le risque autorisé | — | — |
+| `WEEKEND_GUARD` | Vendredi dès 18h UTC jusqu'à la réouverture | activé | — |
+| `CURRENCY_EXPOSURE` | Risque net sur une devise au plafond (le lot est d'abord réduit s'il reste de la place) | 2 % | 4 % |
+| `NEWS_BLACKOUT` | Annonce majeure dans la fenêtre (calendrier CSV) | ±30 min | — |
+| `HIGH_VOLATILITY` | Régime de forte volatilité (ATR >= 1,8 × sa médiane) | activé | — |
+| `SESSION_BLOCKED` | Séance interdite par la configuration | aucune | — |
 | note `VOLUME_REDUCED` | Lot réduit pour respecter le risque cumulé | — | — |
 
 Risque par trade : 0,5 % (borne 1 %). Perte jour 3 % (5 %), semaine 6 % (10 %), drawdown 10 % (20 %).
 Le drawdown ne se lève jamais automatiquement ; les arrêts « jour » se lèvent au changement de jour.
 
-**Reste à faire :** exposition par devise, fenêtres d'annonces, week-end, sorties de volume (voir PROJECT_STATUS).
+**Reste à faire :** voir PROJECT_STATUS. Les annonces sont traitées par M3 (docs/ANALYSE_M3.md).
