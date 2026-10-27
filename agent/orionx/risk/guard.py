@@ -8,12 +8,14 @@ fichier config.yaml ne contourne pas ce délai : au démarrage, l'agent compare 
 from __future__ import annotations
 
 import json
+import os
 from collections.abc import Callable
 from dataclasses import asdict, dataclass, fields
 from datetime import datetime, timedelta
 from pathlib import Path
 
 from orionx.core.config import RiskConfig
+from orionx.core.errors import ConfigError
 from orionx.core.models import utcnow
 
 HIGHER_IS_RISKIER = (
@@ -58,30 +60,38 @@ class RiskParamGuard:
 
     # --- fichiers -----------------------------------------------------------------
     @staticmethod
-    def _load(path: Path) -> dict | None:
-        if not path.exists():
-            return None
-        try:
-            return json.loads(path.read_text(encoding="utf-8"))
-        except (ValueError, OSError):
-            return None
+    def _write(path: Path, data: dict) -> None:
+        """Écriture atomique : un crash pendant l'écriture laisse l'ancien fichier intact, jamais un fichier tronqué."""
+        tmp = path.with_suffix(".tmp")
+        tmp.write_text(json.dumps(data), encoding="utf-8")
+        os.replace(tmp, path)
 
     def active(self) -> RiskConfig | None:
-        data = self._load(self._active_file)
-        return RiskConfig(**data) if data else None
+        """None seulement si le fichier n'existe pas (premier démarrage). Illisible : on refuse, sinon config.yaml
+        serait accepté sans délai."""
+        if not self._active_file.exists():
+            return None
+        try:
+            return RiskConfig(**json.loads(self._active_file.read_text(encoding="utf-8")))
+        except (ValueError, OSError, TypeError, ConfigError) as exc:
+            raise ConfigError(f"{self._active_file} illisible ({exc}) : le restaurer, ou le supprimer volontairement") from exc
 
     def pending(self) -> tuple[RiskConfig, datetime] | None:
-        data = self._load(self._pending_file)
-        if not data:
+        """Une demande illisible n'est jamais appliquée (sens prudent)."""
+        if not self._pending_file.exists():
             return None
-        return RiskConfig(**data["config"]), datetime.fromisoformat(data["effective_at"])
+        try:
+            data = json.loads(self._pending_file.read_text(encoding="utf-8"))
+            return RiskConfig(**data["config"]), datetime.fromisoformat(data["effective_at"])
+        except (ValueError, OSError, TypeError, KeyError, ConfigError):
+            return None
 
     def _set_active(self, cfg: RiskConfig) -> None:
-        self._active_file.write_text(json.dumps(asdict(cfg)), encoding="utf-8")
+        self._write(self._active_file, asdict(cfg))
 
     def _set_pending(self, cfg: RiskConfig, effective_at: datetime) -> None:
-        self._pending_file.write_text(json.dumps({"config": asdict(cfg), "effective_at": effective_at.isoformat(),
-                                                  "requested_at": self._clock().isoformat()}), encoding="utf-8")  # fmt: skip
+        self._write(self._pending_file, {"config": asdict(cfg), "effective_at": effective_at.isoformat(),
+                                         "requested_at": self._clock().isoformat()})  # fmt: skip
 
     def cancel_pending(self) -> None:
         self._pending_file.unlink(missing_ok=True)

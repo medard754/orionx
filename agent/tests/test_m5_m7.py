@@ -145,6 +145,20 @@ class GuardTests(unittest.TestCase):
             self.assertEqual(g.resolve_startup(safer), safer)  # plus prudent : appliqué
             self.assertEqual(g.active(), safer)
 
+    def test_corrupted_active_file_refuses_startup_instead_of_accepting_config(self) -> None:
+        from pathlib import Path
+
+        from orionx.core.errors import ConfigError
+
+        with tempfile.TemporaryDirectory() as d:
+            g = self.guard(FixedClock(), d)
+            g.resolve_startup(risk_from_profile("prudent"))
+            Path(d, "risk_active.json").write_text('{"risk_per_trade_pct": 0.', encoding="utf-8")  # écriture interrompue
+            with self.assertRaises(ConfigError):
+                g.resolve_startup(risk_from_profile("dynamic"))
+            Path(d, "risk_pending.json").write_text("{", encoding="utf-8")
+            self.assertIsNone(g.pending())  # demande illisible : jamais appliquée
+
     def test_is_riskier(self) -> None:
         base = RiskConfig()
         self.assertFalse(is_riskier(base, base))
