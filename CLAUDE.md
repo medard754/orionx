@@ -23,8 +23,8 @@ Code du projet : `agent/orionx/` · tests : `agent/tests/` · docs : `docs/` (li
 - Windows, Python 3.12, venv dans `agent/.venv` ; installation : `pip install -e ".[dev,mt5]"`.
 - MT5 : compte **démo Hedging**, terminal déjà connecté (pas d'identifiants dans le code). Magic number `ORIONX_MAGIC = 261012`.
 - Dépôt Windows : `C:\Users\medar\Documents\orionx\orionx\` (code dans `agent`).
-- Tests (231 sur simulateur) : `python -m unittest discover -s tests -t .` depuis `agent/`.
-- Commandes `python -m orionx.main` : simulate, mt5-check, demo-trade, run, kill, clear-kill, audit-verify, audit-tail, backtest, state, risk-set, risk-status, risk-check.
+- Tests (246 sur simulateur) : `python -m unittest discover -s tests -t .` depuis `agent/`.
+- Commandes `python -m orionx.main` : simulate, mt5-check, demo-trade, run, kill, clear-kill, audit-verify, audit-tail, backtest, state, risk-set, risk-status, risk-check, alert-setup, alert-test.
 - Config : copier `config.example.yaml` en `config.yaml` (jamais versionné) ; ne pas dupliquer la section `risk:`.
 
 ## État des modules
@@ -37,7 +37,7 @@ Code du projet : `agent/orionx/` · tests : `agent/tests/` · docs : `docs/` (li
 | M5 Risque | partiellement validé (test d'exposition à refaire avec un SL de 20 pips) |
 | M6 Exécution | demo-trade validé |
 | M7 Gestion des positions | kill switch validé ; trailing non validé |
-| M8 Alertes (Telegram) | non codé |
+| M8 Alertes (Telegram) | codé et testé (simulateur + faux Telegram) ; à mettre en service : `alert-setup` (RUNBOOK §10) |
 | M9 Dashboard web puis mobile | non codé (nécessite d'abord l'API locale T-14) |
 | M10 Journal/audit | lecture validée |
 | M11 Comptes, licences, paiements | non codé |

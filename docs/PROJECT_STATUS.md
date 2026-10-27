@@ -27,6 +27,10 @@ Dernière mise à jour : 27 oct. 2026 · Phase : validation M3 à M7 sur MT5 dé
   ambiguës, glissement, qualité), positions (ATR, week-end, annonces, positions manuelles). 222 tests sur simulateur.
   **À valider sur MT5** : `RUNBOOK_VALIDATION.md` §8. Détail : `docs/MODULES_M4_M7.md`.
 
+- [x] **M8 alertes Telegram** (27 oct. 2026) : 3 niveaux (critique, important, info), envoi dans un fil dédié (jamais bloquant),
+  anti-répétition et limite de débit, jeton dans le coffre Windows ou l'environnement, jamais dans le dépôt. Signaux en option
+  (`alerts: signals: true`, pour V-4). Testé sur simulateur et faux Telegram ; **à mettre en service** : `RUNBOOK_VALIDATION.md` §10.
+
 ## À faire (ordre recommandé)
 
 | ID | Tâche | Preuve que c'est fini |

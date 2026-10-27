@@ -21,6 +21,7 @@ from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from pathlib import Path
 
+from orionx.alerts.router import AlertRouter, attach_alerts
 from orionx.analysis.calendar import EconomicCalendar
 from orionx.analysis.state import MarketState, Regime, analyze, session_of
 from orionx.analysis.thesis import ThesisMonitor
@@ -83,6 +84,7 @@ class Agent:
         autonomy: str | None = None,
         allow_auto: bool = False,
         kill_flag: str | Path | None = None,
+        alerts: AlertRouter | None = None,
         clock: Callable[[], datetime] = utcnow,
     ) -> None:
         self.gw, self.cfg, self._audit, self._flag = gateway, cfg, audit, kill_flag
@@ -93,6 +95,9 @@ class Agent:
         self.bus = EventBus()
         if audit:
             attach(self.bus, audit)
+        self._alerts = alerts
+        if alerts:
+            attach_alerts(self.bus, alerts)
         self._clock, self.calendar = clock, calendar
         self.states: dict[str, MarketState] = {}
         self._state_bar: dict[str, datetime] = {}
@@ -191,6 +196,8 @@ class Agent:
     def _log(self, kind: str, payload: object = None) -> None:
         if self._audit:
             self._audit.append(kind, payload)
+        if self._alerts:  # ne lève jamais, ne bloque jamais (envoi dans un fil dédié)
+            self._alerts.handle(kind, payload)
 
     # --- cycle de vie -----------------------------------------------------------------
     async def start(self) -> None:
