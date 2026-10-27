@@ -91,12 +91,13 @@ git add . ; git commit -m "chore: socle ORIONX v0.1 (noyau, risque, exécution, 
 git remote add origin <URL-du-depot-prive>
 git push -u origin main
 ```
-Puis sur GitHub : protéger `main` (pull request obligatoire, 1 relecture, CI verte) et remplacer les
-identifiants dans `.github/CODEOWNERS`.
+Puis sur GitHub : protéger `main` (pull request obligatoire, CI verte). Un seul développeur : pas
+d'approbation obligatoire, la relecture suit l'ADR 0004.
 
 ## Règles d'or
 
 1. Jamais d'identifiants dans Git (`.env` et `config.yaml` sont ignorés).
 2. Jamais de compte réel pendant la phase de développement.
-3. Toute modification de `risk/`, `execution/`, `connector_mt5/` ou `core/config.py` est relue par l'autre développeur.
+3. Toute modification de `risk/`, `execution/`, `connector_mt5/` ou `core/config.py` passe par une revue `/code-review`
+   puis une relecture personnelle au moins 24 h plus tard (ADR 0004).
 4. Pas de fusion si un test échoue ; un test de règle de risque n'est jamais assoupli pour « passer ».

@@ -26,24 +26,25 @@ Dernière mise à jour : 27 oct. 2026 · Phase : validation M3 à M7 sur MT5 dé
 
 ## À faire (ordre recommandé)
 
-| ID | Tâche | Qui | Preuve que c'est fini |
-|---|---|---|---|
-| V-1 | Dérouler `RUNBOOK_VALIDATION.md` étapes 1 à 4 sur le démo (journal, arrêt d'urgence) | Dev A + B | Sorties et captures archivées dans `docs/validation/` |
-| V-2 | Revue croisée du code `risk/`, `execution/`, `monitoring/`, `positions/` (chacun relit le code de l'autre) | Dev A + B | PR approuvées, liste des remarques traitées |
-| V-3 | Backtest sur 3000+ bougies puis walk-forward sur plusieurs périodes ; analyser les trades perdants | Dev A | Rapport court : résultats, limites, décision go / no-go |
-| V-4 | Une semaine de `run` en signaux seuls (aucun ordre) ; comparer les signaux au graphique | Dev B | Journal d'audit de la semaine, signaux revus |
-| T-09 | ~~Règles de risque manquantes~~ : faites (M5). Reste : corrélations entre devises plus fines | Dev A | — |
-| H-1 | Chantier stratégie : comparer les filtres `vol`, `session`, `trend`, `all` ; 6 derniers mois mis de côté ; arrêt après 5 hypothèses | Dev A | Tableau RÉSUMÉ du backtest archivé + décision go / no-go |
-| T-10 | `ruff` et `mypy --strict` bloquants dans la CI (le code n'a pas encore été passé au linter) | Dev B | CI verte sans `continue-on-error` |
-| T-11 | Identifiants dans le coffre-fort Windows (`keyring`) | Dev B | Plus aucun mot de passe en clair |
-| T-13 | Reconnexion automatique du terminal MT5 après coupure (aujourd'hui : mode safe, pas de reconnexion) | Dev A | Test de coupure sur démo |
-| T-14 | Interface d'approbation pour `semi_auto` (API locale, puis dashboard) | Dev B | Approbation d'un signal depuis l'API |
+| ID | Tâche | Preuve que c'est fini |
+|---|---|---|
+| V-1 | Dérouler `RUNBOOK_VALIDATION.md` étapes 1 à 4 sur le démo (journal, arrêt d'urgence) | Sorties et captures archivées dans `docs/validation/` |
+| V-2 | Revue du code `risk/`, `execution/`, `monitoring/`, `positions/` : `/code-review` puis relecture personnelle 24 h plus tard (ADR 0004) | Remarques tracées dans la PR et traitées |
+| V-3 | Backtest sur 3000+ bougies puis walk-forward sur plusieurs périodes ; analyser les trades perdants | Rapport court : résultats, limites, décision go / no-go |
+| V-4 | Une semaine de `run` en signaux seuls (aucun ordre) ; comparer les signaux au graphique | Journal d'audit de la semaine, signaux revus |
+| T-09 | ~~Règles de risque manquantes~~ : faites (M5). Reste : corrélations entre devises plus fines | — |
+| H-1 | Chantier stratégie : comparer les filtres `vol`, `session`, `trend`, `all` ; 6 derniers mois mis de côté ; arrêt après 5 hypothèses | Tableau RÉSUMÉ du backtest archivé + décision go / no-go |
+| T-10 | `ruff` et `mypy --strict` bloquants dans la CI (le code n'a pas encore été passé au linter) | CI verte sans `continue-on-error` |
+| T-11 | Identifiants dans le coffre-fort Windows (`keyring`) | Plus aucun mot de passe en clair |
+| T-13 | Reconnexion automatique du terminal MT5 après coupure (aujourd'hui : mode safe, pas de reconnexion) | Test de coupure sur démo |
+| T-14 | Interface d'approbation pour `semi_auto` (API locale, puis dashboard) | Approbation d'un signal depuis l'API |
 
 ## Décisions prises
 
 - Agent local Windows, démo uniquement, un seul courtier cible pour commencer (à choisir : ______ ).
 - Dataclasses dans le noyau, Pydantic aux frontières (ADR 0002).
 - Pas d'IA avant que la chaîne risque → exécution soit validée en démo.
+- Un seul développeur (27 oct. 2026) : la relecture croisée devient `/code-review` + relecture différée de 24 h (ADR 0004).
 
 ## Bloquants / questions ouvertes
 

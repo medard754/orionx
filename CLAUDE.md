@@ -4,7 +4,7 @@
 ORIONX est un agent de trading IA qui tourne en local sous Windows et se connecte à un MetaTrader 5 déjà ouvert.
 Il analyse le marché en temps réel, propose des trades, applique une gestion du risque stricte, exécute et gère les positions.
 Mode **démo uniquement** pour l'instant (le mode live est refusé par le code).
-Équipe : le propriétaire (francophone) + un second développeur. Répondre en français.
+Équipe : le propriétaire (francophone), seul développeur (ADR 0004). Répondre en français.
 Code du projet : `agent/orionx/` · tests : `agent/tests/` · docs : `docs/` (lire `docs/PROJECT_STATUS.md` en premier).
 
 ## Principes non négociables
@@ -57,6 +57,6 @@ Code du projet : `agent/orionx/` · tests : `agent/tests/` · docs : `docs/` (li
 ## Reste à faire
 1. Valider M3 à M7 sur MT5 démo (`docs/RUNBOOK_VALIDATION.md` §8, tests 1 à 7).
 2. Committer le travail non versionné (analysis, decision, risk/guard, riskcheck, stratégies, tests) après les tests.
-3. Revue croisée V-2, walk-forward V-3, semaine de signaux seuls V-4.
+3. Revue V-2 (`/code-review` + relecture différée, ADR 0004), walk-forward V-3, semaine de signaux seuls V-4.
 4. T-10 ruff/mypy bloquants, T-11 coffre Windows pour les identifiants, T-13 reconnexion MT5, T-14 API locale (FastAPI + WebSocket).
 5. M8 alertes, puis M9 dashboard, puis M11. Couche IA seulement après mesures. Prévoir un compte démo avec spreads réels.
