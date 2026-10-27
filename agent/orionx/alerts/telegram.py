@@ -98,7 +98,7 @@ def check_token(token: str) -> str | None:
             "voir l'autre méthode ci-dessous.")  # fmt: skip
 
 
-def _keyring() -> ModuleType | None:
+def keyring_module() -> ModuleType | None:
     try:
         import keyring  # noqa: PLC0415  (facultatif : pip install -e ".[alerts]")
     except ImportError:
@@ -112,14 +112,14 @@ def load_credentials(env: Mapping[str, str] | None = None, kr: ModuleType | None
     token, chat = env.get("ORIONX_TELEGRAM_TOKEN"), env.get("ORIONX_TELEGRAM_CHAT_ID")
     if token and chat:
         return token, chat
-    kr = kr or _keyring()
+    kr = kr or keyring_module()
     if kr is not None:
         token, chat = kr.get_password(SERVICE, "telegram_token"), kr.get_password(SERVICE, "telegram_chat_id")
     return (token, chat) if token and chat else None
 
 
 def store_credentials(token: str, chat_id: str, kr: ModuleType | None = None) -> None:
-    kr = kr or _keyring()
+    kr = kr or keyring_module()
     if kr is None:
         raise AlertError("Coffre Windows indisponible : pip install -e \".[alerts]\" (ou variables ORIONX_TELEGRAM_TOKEN / _CHAT_ID)")
     kr.set_password(SERVICE, "telegram_token", token)

@@ -229,7 +229,7 @@ class CredentialTests(unittest.TestCase):
         self.assertEqual(load_credentials(env, kr), ("envtok", "1"))
 
     def test_storing_without_keyring_fails_clearly(self) -> None:
-        with mock.patch("orionx.alerts.telegram._keyring", return_value=None), self.assertRaises(AlertError):
+        with mock.patch("orionx.alerts.telegram.keyring_module", return_value=None), self.assertRaises(AlertError):
             store_credentials("tok", "9")
 
 
@@ -280,7 +280,8 @@ class CommandTests(unittest.TestCase):
 
         out = io.StringIO()
         called = []
-        with (mock.patch("getpass.getpass", return_value="\x16"),
+        with (mock.patch("orionx.alerts.telegram.keyring_module", return_value=FakeKeyring()),
+              mock.patch("getpass.getpass", return_value="\x16"),
               mock.patch("orionx.alerts.telegram.TelegramNotifier._call", lambda *a, **k: called.append(a)),
               contextlib.redirect_stdout(out)):  # fmt: skip
             self.assertEqual(m.alert_cmd("alert-setup"), 3)
@@ -294,7 +295,8 @@ class CommandTests(unittest.TestCase):
 
         good = "7412345678:AAH3xQ_abcdefghijklmnopqrstuvwxyz012"
         stored = {}
-        with (mock.patch("builtins.input", return_value=f'  "{good}"\n'),
+        with (mock.patch("orionx.alerts.telegram.keyring_module", return_value=FakeKeyring()),
+              mock.patch("builtins.input", return_value=f'  "{good}"\n'),
               mock.patch("orionx.alerts.telegram.TelegramNotifier.discover_chat_id", lambda self: "42"),
               mock.patch("orionx.alerts.telegram.TelegramNotifier.send", lambda self, text: None),
               mock.patch("orionx.alerts.telegram.store_credentials", lambda t, c: stored.update(t=t, c=c)),
@@ -313,7 +315,8 @@ class CommandTests(unittest.TestCase):
         self.assertEqual(clean_token(good + "x" + good)[1], None, "seul un doublon exact est réparé")
         stored = {}
         out = io.StringIO()
-        with (mock.patch("getpass.getpass", return_value=good + good),
+        with (mock.patch("orionx.alerts.telegram.keyring_module", return_value=FakeKeyring()),
+              mock.patch("getpass.getpass", return_value=good + good),
               mock.patch("orionx.alerts.telegram.TelegramNotifier.discover_chat_id", lambda self: "42"),
               mock.patch("orionx.alerts.telegram.TelegramNotifier.send", lambda self, text: None),
               mock.patch("orionx.alerts.telegram.store_credentials", lambda t, c: stored.update(t=t)),
@@ -321,6 +324,18 @@ class CommandTests(unittest.TestCase):
             self.assertEqual(m.alert_cmd("alert-setup"), 0)
         self.assertEqual(stored["t"], good)
         self.assertNotIn(good, out.getvalue(), "le jeton n'est jamais affiché")
+
+    def test_setup_without_keyring_stops_before_asking_for_the_token(self) -> None:
+        import contextlib
+
+        import orionx.main as m
+
+        out = io.StringIO()
+        with (mock.patch("orionx.alerts.telegram.keyring_module", return_value=None),
+              mock.patch("getpass.getpass", side_effect=AssertionError("jeton demandé pour rien")),
+              contextlib.redirect_stdout(out)):  # fmt: skip
+            self.assertEqual(m.alert_cmd("alert-setup"), 2)
+        self.assertIn('pip install -e ".[alerts]"', out.getvalue())
 
     def test_alert_test_sends_one_message(self) -> None:
         import contextlib

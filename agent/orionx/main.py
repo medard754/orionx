@@ -198,7 +198,15 @@ def _alert_router(cfg: AppConfig) -> AlertRouter | None:
 def alert_cmd(command: str, visible: bool = False) -> int:
     import getpass
 
-    from orionx.alerts.telegram import AlertError, TelegramNotifier, check_token, clean_token, load_credentials, store_credentials
+    from orionx.alerts.telegram import (
+        AlertError,
+        TelegramNotifier,
+        check_token,
+        clean_token,
+        keyring_module,
+        load_credentials,
+        store_credentials,
+    )
 
     if command == "alert-test":
         creds = load_credentials()
@@ -212,6 +220,10 @@ def alert_cmd(command: str, visible: bool = False) -> int:
             return 3
         print("Message de test envoyé : vérifiez Telegram.")
         return 0
+    if keyring_module() is None:  # vérifié AVANT la saisie : ne jamais faire taper un jeton pour rien
+        print("Coffre Windows indisponible. Installez-le d'abord, puis relancez « alert-setup » :")
+        print('  pip install -e ".[alerts]"')
+        return 2
     print("1. Dans Telegram, ouvrez @BotFather, envoyez /newbot et suivez les étapes : il vous donne un JETON.")
     print("2. Ouvrez la conversation avec votre nouveau bot et envoyez-lui /start.")
     if visible:  # le collage dans une saisie invisible échoue souvent sous Windows ; rien n'est enregistré en clair
