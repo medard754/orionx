@@ -29,7 +29,8 @@ Dernière mise à jour : 27 oct. 2026 · Phase : validation M3 à M7 sur MT5 dé
 
 - [x] **M8 alertes Telegram** (27 oct. 2026) : 3 niveaux (critique, important, info), envoi dans un fil dédié (jamais bloquant),
   anti-répétition et limite de débit, jeton dans le coffre Windows ou l'environnement, jamais dans le dépôt. Signaux en option
-  (`alerts: signals: true`, pour V-4). Testé sur simulateur et faux Telegram ; **à mettre en service** : `RUNBOOK_VALIDATION.md` §10.
+  (`alerts: signals: true`, pour V-4). Testé sur simulateur et faux Telegram. **Bot @orionx_trader_bot connecté le 27 oct.** (jeton dans le coffre Windows) ;
+  reste le test de bout en bout avec l'agent : `RUNBOOK_VALIDATION.md` §10.2.
 
 ## À faire (ordre recommandé)
 
