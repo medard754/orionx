@@ -21,7 +21,7 @@ Dernière mise à jour : 27 oct. 2026 · Phase : validation M3 à M7 sur MT5 dé
 
 - [x] **M4 à M7 complétés** (16 oct. 2026) : moteur de décision (3 stratégies, régimes, conflits, classement par devise),
   risque (exposition par devise, week-end, profils, verrouillage 24 h, mode sûr), exécution (tentatives sûres, réponses
-  ambiguës, glissement, qualité), positions (ATR, week-end, annonces, positions manuelles). 192 tests sur simulateur.
+  ambiguës, glissement, qualité), positions (ATR, week-end, annonces, positions manuelles). 208 tests sur simulateur.
   **À valider sur MT5** : `RUNBOOK_VALIDATION.md` §8. Détail : `docs/MODULES_M4_M7.md`.
 
 ## À faire (ordre recommandé)
@@ -29,7 +29,7 @@ Dernière mise à jour : 27 oct. 2026 · Phase : validation M3 à M7 sur MT5 dé
 | ID | Tâche | Preuve que c'est fini |
 |---|---|---|
 | V-1 | Dérouler `RUNBOOK_VALIDATION.md` étapes 1 à 4 sur le démo (journal, arrêt d'urgence) | Sorties et captures archivées dans `docs/validation/` |
-| V-2 | Revue du code `risk/`, `execution/`, `monitoring/`, `positions/` : `/code-review` puis relecture personnelle 24 h plus tard (ADR 0004) | Remarques tracées dans la PR et traitées |
+| V-2 | Revue du code `risk/`, `execution/`, `monitoring/`, `positions/` : `/code-review` puis relecture personnelle 24 h plus tard (ADR 0004). **27 oct. : revue faite, 9 corrections + ADR 0005 sur la PR #1 ; reste la relecture personnelle** | Remarques tracées dans la PR et traitées |
 | V-3 | Backtest sur 3000+ bougies puis walk-forward sur plusieurs périodes ; analyser les trades perdants | Rapport court : résultats, limites, décision go / no-go |
 | V-4 | Une semaine de `run` en signaux seuls (aucun ordre) ; comparer les signaux au graphique | Journal d'audit de la semaine, signaux revus |
 | T-09 | ~~Règles de risque manquantes~~ : faites (M5). Reste : corrélations entre devises plus fines | — |
