@@ -20,7 +20,8 @@ secrets/
 # Données locales
 *.db
 *.sqlite3
-data/
+/data/
+/agent/data/
 logs/
 
 # Éditeurs / OS
