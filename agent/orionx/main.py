@@ -8,6 +8,7 @@
   python -m orionx.main clear-kill        # retire le drapeau d'arrêt d'urgence
   python -m orionx.main audit-verify      # vérifie l'intégrité du journal
   python -m orionx.main backtest          # backtest de la stratégie sur l'historique MT5 (lecture seule)
+  python -m orionx.main backtest --h1     # protocole H-1/V-3 : développement seul (docs/validation/H-1_protocole.md)
   python -m orionx.main risk-set --profile moderate   # changer de profil de risque (hausse = délai de 24 h)
   python -m orionx.main risk-status       # configuration de risque active / en attente
   python -m orionx.main risk-check --symbol EURUSD --side buy   # que déciderait le risque ? (aucun ordre)
@@ -344,6 +345,97 @@ async def backtest_cmd(symbol: str, n_bars: int, folds: int, csv_path: Path | No
     return 0
 
 
+async def h1_cmd(symbol: str, open_holdout: str | None, cfg: AppConfig) -> int:
+    """Protocole H-1/V-3 (docs/validation/H-1_protocole.md) : développement seul, réserve ouverte une fois."""
+    import hashlib
+
+    from orionx.audit.log import AuditLog
+    from orionx.backtest import h1
+
+    snap = DATA_DIR / f"h1_{symbol}_H1.csv"
+    gw = None
+    if not snap.exists():  # première exécution : on fige les données (sinon la fenêtre glisse et rien ne se reproduit)
+        gw = _mt5_gateway()
+        if gw is None:
+            return 2
+        await gw.connect()
+        try:
+            h1.save_snapshot(snap, await gw.get_bars(symbol, "H1", 30_000))
+        finally:
+            await gw.shutdown()
+        print(f"Instantané des données créé : {snap}")
+    bars = h1.load_snapshot(snap)
+    gw = _mt5_gateway()
+    if gw is None:
+        return 2
+    await gw.connect()
+    try:
+        spec = await gw.get_symbol_spec(symbol)
+    finally:
+        await gw.shutdown()
+    dev, hold = h1.split_holdout(bars)
+    digest = hashlib.sha256(snap.read_bytes()).hexdigest()[:16]
+    print(f"Instantané {snap.name} sha256={digest} : {len(bars)} bougies ({bars[0].time:%Y-%m-%d} -> {bars[-1].time:%Y-%m-%d})")
+    print(f"Développement : {len(dev)} bougies ({dev[0].time:%Y-%m-%d} -> {dev[-1].time:%Y-%m-%d}) · "
+          f"réserve : {len(hold)} bougies ({hold[0].time:%Y-%m-%d} -> {hold[-1].time:%Y-%m-%d}), NON évaluée ici")  # fmt: skip
+    make = lambda: make_strategy("trend_pullback", cfg)  # noqa: E731
+    reports = h1.run_dev(dev, spec, symbol, make)
+
+    def line(label: str, r) -> str:  # type: ignore[no-untyped-def]
+        return f"{label:<12} trades={r.trades:>4}  gagnants={r.win_rate:>4.0%}  PF={r.profit_factor:>5.2f}  net={r.net_profit:>+9.2f}  DD={r.max_drawdown_pct:>5.1f} %"  # fmt: skip
+
+    for r in reports:
+        role = "RÉFÉRENCE" if r.name == "none" else "hypothèse"
+        print()
+        print(f"=== {r.name} ({role}) ===")
+        print(" " + line("développement", r.total))
+        for i, f in enumerate(r.folds, 1):
+            print("  " + line(f"bloc {i}", f))
+        for c in r.verdict.criteria:
+            print(f"   [{'OK' if c.passed else 'ÉCHEC'}] {c.name}: {c.detail}")
+    cand = h1.pick_candidate(reports)
+    print()
+    print("RÉSUMÉ DÉVELOPPEMENT")
+    print(f"{'filtre':<10}{'trades':>8}{'PF':>7}{'net':>11}{'DD %':>7}{'bat le hasard':>15}  critères")
+    for r in reports:
+        print(f"{r.name:<10}{r.total.trades:>8}{r.total.profit_factor:>7.2f}{r.total.net_profit:>+11.0f}{r.total.max_drawdown_pct:>7.1f}"
+              f"{r.ref.share_worse:>14.0%}  {'TOUS PASSÉS' if r.verdict.passed else 'échec'}")  # fmt: skip
+    for name in ("none", cand.name if cand else None):
+        if name:
+            rep = next(r for r in reports if r.name == name)
+            print()
+            print(f"TRADES PERDANTS « {name} » (descriptif : ne sert jamais à régler un paramètre)")
+            for dim, groups in h1.loser_breakdown(rep.total.log).items():
+                print("  " + dim + " : " + " · ".join(f"{k} {g.losers}/{g.trades} perdants net {g.net:+.0f}" for k, g in sorted(groups.items())))  # fmt: skip
+    if cand is None:
+        print()
+        print("Aucune hypothèse ne passe tous les critères : la réserve reste FERMÉE. Décision : NO-GO.")
+        return 0 if not open_holdout else 3
+    print()
+    print(f"Candidat désigné par la règle (§6) : « {cand.name} ».")
+    if not open_holdout:
+        print("Réserve fermée. Pour l'ouvrir (UNE seule fois) : backtest --h1 --open-holdout " + cand.name)
+        return 0
+    if open_holdout != cand.name:
+        print(f"Refusé : seul « {cand.name} » peut être présenté à la réserve (règle §6), pas « {open_holdout} ».")
+        return 3
+    try:
+        h1.open_holdout_once(DATA_DIR / "h1_holdout_opened.json", cand.name, AuditLog(AUDIT_DB))
+    except h1.HoldoutAlreadyOpened as exc:
+        print(f"Refusé : {exc}")
+        return 3
+    r, verdict = h1.run_holdout(hold, spec, symbol, make, cand.name)
+    print()
+    print("=== RÉSERVE (ouverture unique) ===")
+    print(" " + line(cand.name, r))
+    for c in verdict.criteria:
+        print(f"   [{'OK' if c.passed else 'ÉCHEC'}] {c.name}: {c.detail}")
+    print()
+    go = "GO pour V-4 (une semaine de signaux seuls ; n'autorise PAS l'exécution automatique)."
+    print("Décision : " + (go if verdict.passed else "NO-GO (échec ou résultat non concluant sur la réserve)."))
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="orionx")
     parser.add_argument("command", choices=["simulate", "mt5-check", "demo-trade", "run", "kill", "clear-kill", "audit-verify", "audit-tail", "backtest", "state", "risk-set", "risk-status", "risk-check"])
@@ -364,6 +456,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--filters", default="none", help="backtest : filtres à comparer, ex. none,vol,session,trend,all")
     parser.add_argument("--random-runs", type=int, default=20, help="backtest : nombre de tirages du témoin aléatoire")
     parser.add_argument("--csv", type=Path, default=None, help="backtest : exporte les trades en CSV")
+    parser.add_argument("--h1", action="store_true", help="backtest : protocole H-1/V-3 (réserve de 6 mois jamais évaluée ici)")
+    parser.add_argument("--open-holdout", default=None, metavar="FILTRE", help="backtest --h1 : ouvre la réserve UNE fois, pour le candidat désigné")
     args = parser.parse_args(argv)
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
     cfg = _config(str(args.config) if args.config else None)
@@ -392,6 +486,8 @@ def main(argv: list[str] | None = None) -> int:
     if args.command == "state":
         return asyncio.run(state_cmd(cfg))
     if args.command == "backtest":
+        if args.h1:
+            return asyncio.run(h1_cmd(args.symbol, args.open_holdout, cfg))
         return asyncio.run(backtest_cmd(args.symbol, args.bars, args.folds, args.csv, args.filters, args.random_runs, args.strategy, cfg))
     if args.command == "demo-trade":
         return asyncio.run(demo_trade(args.yes, args.hold))
