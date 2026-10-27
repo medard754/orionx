@@ -162,6 +162,24 @@ class GuardTests(unittest.TestCase):
             g.resolve_startup(RiskConfig(risk_per_trade_pct=0.3))
             self.assertIn("ANNULÉE", g.startup_note)  # l'annulation est visible
 
+    def test_preview_matches_what_the_agent_would_use_and_writes_nothing(self) -> None:
+        from pathlib import Path
+
+        with tempfile.TemporaryDirectory() as d:
+            clock = FixedClock()
+            g = self.guard(clock, d)
+            prudent, dynamic = risk_from_profile("prudent"), risk_from_profile("dynamic")
+            self.assertEqual(g.preview(dynamic), dynamic)  # jamais démarré : config.yaml
+            self.assertFalse(Path(d, "risk_active.json").exists())  # lecture seule
+            g.resolve_startup(prudent)
+            self.assertEqual(g.preview(dynamic), prudent)  # plus risqué : l'agent garderait l'ancienne
+            self.assertFalse(Path(d, "risk_pending.json").exists())
+            g.request(dynamic)
+            clock.advance(hours=25)
+            self.assertEqual(g.preview(prudent), dynamic)  # délai écoulé : appliquée au premier cycle
+            safer = RiskConfig(risk_per_trade_pct=0.3)
+            self.assertEqual(g.preview(safer), safer)
+
     def test_corrupted_active_file_refuses_startup_instead_of_accepting_config(self) -> None:
         from pathlib import Path
 

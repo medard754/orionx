@@ -35,6 +35,16 @@ class RiskCheckTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(code, 0, text)
         self.assertIn("APPROUVÉ", text)
 
+    async def test_uses_the_active_risk_config_not_config_yaml(self) -> None:
+        gw = SimulatedGateway({"EURUSD": EURUSD}, balance=100_000.0)
+        gw.set_tick("EURUSD", 1.10000, 1.10010, utcnow())
+        yaml_cfg = AppConfig(risk=RiskConfig(weekend_guard=False, risk_per_trade_pct=1.0, max_total_open_risk_pct=4.0))
+        active = RiskConfig(weekend_guard=False, risk_per_trade_pct=0.5)
+        lines: list[str] = []
+        code = await check_proposal(gw, yaml_cfg, "EURUSD", Side.BUY, out=lines.append, sleep=no_sleep, risk_cfg=active)
+        self.assertEqual(code, 0, lines)
+        self.assertIn("2.5 lot (risque cible 0.5 %", "\n".join(lines))  # 0,5 % de 100 000 sur 20 pips, pas 1 %
+
     async def test_positions_on_other_symbols_are_understood(self) -> None:
         code, text, _ = await self.run_check(Side.BUY)  # plafond par défaut (2 %) : lot réduit, jamais « non protégée »
         self.assertNotIn("UNPROTECTED_POSITION", text)

@@ -200,14 +200,16 @@ async def kill_cmd(level: int, auto_yes: bool) -> int:
 
 async def riskcheck_cmd(cfg: AppConfig, symbol: str, side: str, sl_pips: float) -> int:
     from orionx.core.models import Side
+    from orionx.risk.guard import RiskParamGuard
     from orionx.riskcheck import check_proposal
 
+    risk_cfg = RiskParamGuard(DATA_DIR).preview(cfg.risk)  # la config que l'agent utiliserait, pas config.yaml
     gw = _mt5_gateway()
     if gw is None:
         return 2
     await gw.connect()
     try:
-        return await check_proposal(gw, cfg, symbol, Side(side), sl_pips)
+        return await check_proposal(gw, cfg, symbol, Side(side), sl_pips, risk_cfg=risk_cfg)
     finally:
         await gw.shutdown()
 

@@ -124,6 +124,17 @@ class RiskParamGuard:
         self.cancel_pending()
         return cfg
 
+    def preview(self, configured: RiskConfig) -> RiskConfig:
+        """Ce que l'agent utiliserait s'il démarrait maintenant (resolve_startup puis due), en LECTURE SEULE."""
+        active, pending = self.active(), self.pending()
+        if active is None:
+            return configured
+        if configured != active and not is_riskier(active, configured):
+            return configured  # plus prudent : appliqué, la demande en attente serait annulée
+        if pending is not None and pending[1] <= self._clock():
+            return pending[0]
+        return active
+
     def resolve_startup(self, configured: RiskConfig) -> RiskConfig:
         """Configuration à utiliser au démarrage : jamais plus risquée que la dernière active sans passer par le délai."""
         active, pending = self.active(), self.pending()
