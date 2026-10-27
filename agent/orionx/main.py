@@ -174,7 +174,7 @@ async def run_agent(cfg: AppConfig, allow_auto: bool, cycle: float, max_cycles: 
     finally:
         await gw.shutdown()
         if alerts:
-            alerts.close()  # laisse partir les dernières alertes (au plus 5 s)
+            alerts.close()  # laisse partir les dernières alertes (au plus 30 s, réseau lent)
         print("Agent arrêté.")
     if agent.aborted:
         print(f"ARRÊT DÉFINITIF : {agent.aborted}. Vérifiez le compte du terminal MT5, puis relancez l'agent.")

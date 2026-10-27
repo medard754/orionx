@@ -136,13 +136,13 @@ class TelegramTests(unittest.TestCase):
         self.assertEqual(seen["url"], f"https://api.telegram.org/bot{TOKEN}/sendMessage")
         self.assertIn("chat_id=42", seen["data"])
         self.assertIn("text=bonjour", seen["data"])
-        self.assertEqual(seen["timeout"], 5.0)
+        self.assertEqual(seen["timeout"], 20.0)  # réseau lent mesuré : voir TelegramNotifier
 
     def test_the_token_never_leaks_in_errors_or_repr(self) -> None:
         def broken(req, timeout):
             raise urllib.error.URLError(f"échec sur {req.full_url}")
 
-        n = TelegramNotifier(TOKEN, "42", opener=broken)
+        n = TelegramNotifier(TOKEN, "42", opener=broken, sleep=lambda s: None)
         with self.assertRaises(AlertError) as ctx:
             n.send("x")
         self.assertNotIn(TOKEN, str(ctx.exception))
@@ -155,6 +155,28 @@ class TelegramTests(unittest.TestCase):
         with self.assertRaises(AlertError) as ctx:
             TelegramNotifier(TOKEN, "42", opener=refused).send("x")
         self.assertNotIn(TOKEN, str(ctx.exception))
+
+    def test_a_slow_network_is_retried_but_a_refusal_is_not(self) -> None:
+        calls, pauses = [], []
+
+        def flaky(req, timeout):
+            calls.append(timeout)
+            if len(calls) < 3:
+                raise urllib.error.URLError("_ssl.c:993: The handshake operation timed out")
+            return FakeResponse(b'{"ok": true, "result": {}}')
+
+        TelegramNotifier(TOKEN, "42", opener=flaky, sleep=pauses.append).send("x")
+        self.assertEqual((len(calls), pauses, calls[0]), (3, [2.0, 4.0], 20.0))
+
+        refused = []
+
+        def unauthorized(req, timeout):
+            refused.append(1)
+            raise urllib.error.HTTPError(req.full_url, 401, "Unauthorized", {}, None)
+
+        with self.assertRaises(AlertError):
+            TelegramNotifier(TOKEN, "42", opener=unauthorized, sleep=lambda s: None).send("x")
+        self.assertEqual(len(refused), 1, "un jeton refusé ne sera pas accepté au 2e essai")
 
     def test_a_refused_token_is_not_reported_as_a_network_failure(self) -> None:
         def unauthorized(req, timeout):

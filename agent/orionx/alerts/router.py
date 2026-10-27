@@ -200,7 +200,7 @@ class AlertRouter:
             time.sleep(0.01)
         return not self._queue.unfinished_tasks
 
-    def close(self, timeout: float = 5.0) -> None:
+    def close(self, timeout: float = 30.0) -> None:
         """À l'arrêt : laisse partir les dernières alertes (ex. « agent arrêté ») sans bloquer plus que `timeout`."""
         self.flush(timeout)
         try:

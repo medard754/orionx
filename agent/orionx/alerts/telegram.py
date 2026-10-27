@@ -9,6 +9,7 @@ from __future__ import annotations
 import json
 import os
 import re
+import time
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -26,8 +27,12 @@ class AlertError(Exception):
 
 
 class TelegramNotifier:
-    def __init__(self, token: str, chat_id: str, timeout: float = 5.0, opener: Opener = urllib.request.urlopen) -> None:
+    def __init__(self, token: str, chat_id: str, timeout: float = 20.0, retries: int = 2, opener: Opener = urllib.request.urlopen,
+                 sleep: Callable[[float], None] = time.sleep) -> None:  # fmt: skip
+        # Délai large et nouvelles tentatives : mesuré le 27 oct., la poignée de main TLS vers Telegram varie de 0,3 à 11 s sur ce
+        # poste. Sans conséquence pour l'agent : les alertes partent dans un fil dédié.
         self._token, self._chat_id, self._timeout, self._open = token, chat_id, timeout, opener
+        self._retries, self._sleep = retries, sleep
 
     def __repr__(self) -> str:  # jamais le jeton, même dans un journal ou une trace
         return f"TelegramNotifier(chat_id={self._chat_id!r}, token=***)"
@@ -38,15 +43,21 @@ class TelegramNotifier:
     def _call(self, method: str, params: Mapping[str, str] | None = None) -> Any:
         data = urllib.parse.urlencode(params).encode() if params is not None else None
         req = urllib.request.Request(f"{API}/bot{self._token}/{method}", data=data, method="POST" if data else "GET")
-        try:
-            with self._open(req, timeout=self._timeout) as resp:
-                body = json.loads(resp.read().decode("utf-8"))
-        except urllib.error.HTTPError as exc:  # Telegram a bien répondu : c'est le jeton ou la conversation qui pose problème
-            hint = {401: "jeton refusé : recopiez-le depuis @BotFather", 404: "jeton mal formé : recopiez-le depuis @BotFather",
-                    400: "conversation introuvable : envoyez /start au bot"}.get(exc.code, "")  # fmt: skip
-            raise AlertError(f"Telegram a refusé (HTTP {exc.code}) {hint}".strip()) from None
-        except Exception as exc:  # noqa: BLE001 - message masqué, et pas de chaînage : la requête contient le jeton
-            raise AlertError(f"Telegram injoignable (réseau) : {self._mask(str(exc))}") from None
+        for attempt in range(self._retries + 1):
+            try:
+                with self._open(req, timeout=self._timeout) as resp:
+                    body = json.loads(resp.read().decode("utf-8"))
+                break
+            except urllib.error.HTTPError as exc:  # Telegram a répondu : réessayer ne changerait rien
+                hint = {401: "jeton refusé : recopiez-le depuis @BotFather", 404: "jeton mal formé : recopiez-le depuis @BotFather",
+                        400: "conversation introuvable : envoyez /start au bot"}.get(exc.code, "")  # fmt: skip
+                raise AlertError(f"Telegram a refusé (HTTP {exc.code}) {hint}".strip()) from None
+            except Exception as exc:  # noqa: BLE001 - message masqué, et pas de chaînage : la requête contient le jeton
+                if attempt < self._retries:  # réseau lent ou coupé : on réessaie (un doublon vaut mieux qu'une alerte perdue)
+                    self._sleep(2.0 * (attempt + 1))
+                    continue
+                tries = self._retries + 1
+                raise AlertError(f"Telegram injoignable (réseau, {tries} essais) : {self._mask(str(exc))}") from None
         if not body.get("ok"):
             raise AlertError(f"Telegram a refusé : {self._mask(str(body.get('description')))}")
         return body.get("result")
