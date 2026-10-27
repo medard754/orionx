@@ -155,6 +155,21 @@ class GuardTests(unittest.TestCase):
         self.assertTrue(is_riskier(base, RiskConfig(max_spread_points_by_symbol={"EURUSD": 80})))
         self.assertFalse(is_riskier(base, RiskConfig(max_spread_points_by_symbol={"EURUSD": 10})))
 
+    def test_is_riskier_catches_every_loosening(self) -> None:
+        base = RiskConfig(max_spread_points_by_symbol={"XAUUSD": 20})
+        self.assertTrue(is_riskier(base, RiskConfig(max_spread_points_by_symbol={"XAUUSD": 20}, weekend_no_entry_from_utc=23)))
+        self.assertTrue(is_riskier(base, RiskConfig(max_spread_points_by_symbol={"XAUUSD": 20}, approval_ttl_seconds=60)))
+        self.assertTrue(is_riskier(base, RiskConfig()))  # XAUUSD retiré : son plafond remonte de 20 à 30
+        self.assertFalse(is_riskier(base, RiskConfig(max_spread_points_by_symbol={"XAUUSD": 20}, weekend_no_entry_from_utc=16)))
+
+    def test_every_risk_field_is_classified(self) -> None:
+        from dataclasses import fields
+
+        from orionx.risk.guard import HIGHER_IS_RISKIER, LOWER_IS_RISKIER, SPECIAL
+
+        known = {*HIGHER_IS_RISKIER, *LOWER_IS_RISKIER, *SPECIAL}
+        self.assertEqual({f.name for f in fields(RiskConfig)} - known, set(), "classer le nouveau champ dans guard.py")
+
 
 class M7Tests(unittest.IsolatedAsyncioTestCase):
     async def build(self, rules: PositionRules, now: datetime = T0, **gwkw):

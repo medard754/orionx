@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import json
 from collections.abc import Callable
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, fields
 from datetime import datetime, timedelta
 from pathlib import Path
 
@@ -19,21 +19,28 @@ from orionx.core.models import utcnow
 HIGHER_IS_RISKIER = (
     "risk_per_trade_pct", "max_daily_loss_pct", "max_weekly_loss_pct", "max_drawdown_pct", "max_open_positions",
     "max_total_open_risk_pct", "max_currency_exposure_pct", "max_consecutive_losses", "max_spread_points",
-    "max_slippage_points",
+    "max_slippage_points", "approval_ttl_seconds", "weekend_no_entry_from_utc",
 )  # fmt: skip
 LOWER_IS_RISKIER = ("min_rr", "min_margin_level_pct")
+SPECIAL = ("weekend_guard", "max_spread_points_by_symbol")  # comparés à part
 
 
 def is_riskier(old: RiskConfig, new: RiskConfig) -> bool:
-    """Vrai si `new` autorise PLUS de risque que `old` sur au moins un paramètre."""
+    """Vrai si `new` autorise PLUS de risque que `old` sur au moins un paramètre.
+
+    Un champ non classé ci-dessus est considéré comme plus risqué dès qu'il change : un nouveau paramètre ne peut pas
+    contourner le délai par oubli."""
     if any(getattr(new, f) > getattr(old, f) for f in HIGHER_IS_RISKIER):
         return True
     if any(getattr(new, f) < getattr(old, f) for f in LOWER_IS_RISKIER):
         return True
     if old.weekend_guard and not new.weekend_guard:
         return True
+    known = {*HIGHER_IS_RISKIER, *LOWER_IS_RISKIER, *SPECIAL}
+    if any(getattr(new, f.name) != getattr(old, f.name) for f in fields(RiskConfig) if f.name not in known):
+        return True
     olds, news = old.max_spread_points_by_symbol, new.max_spread_points_by_symbol
-    return any(v > olds.get(k, old.max_spread_points) for k, v in news.items())
+    return any(news.get(k, new.max_spread_points) > olds.get(k, old.max_spread_points) for k in olds.keys() | news.keys())
 
 
 @dataclass(frozen=True)
