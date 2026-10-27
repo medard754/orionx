@@ -195,10 +195,10 @@ def _alert_router(cfg: AppConfig) -> AlertRouter | None:
     return AlertRouter(TelegramNotifier(*creds), cfg.alerts)
 
 
-def alert_cmd(command: str) -> int:
+def alert_cmd(command: str, visible: bool = False) -> int:
     import getpass
 
-    from orionx.alerts.telegram import AlertError, TelegramNotifier, load_credentials, store_credentials
+    from orionx.alerts.telegram import AlertError, TelegramNotifier, check_token, load_credentials, store_credentials
 
     if command == "alert-test":
         creds = load_credentials()
@@ -214,10 +214,19 @@ def alert_cmd(command: str) -> int:
         return 0
     print("1. Dans Telegram, ouvrez @BotFather, envoyez /newbot et suivez les étapes : il vous donne un JETON.")
     print("2. Ouvrez la conversation avec votre nouveau bot et envoyez-lui /start.")
-    token = getpass.getpass("3. Collez le jeton (la saisie reste invisible) : ").strip()
+    if visible:  # le collage dans une saisie invisible échoue souvent sous Windows ; rien n'est enregistré en clair
+        raw = input("3. Collez le jeton (il s'affiche à l'écran, effacez-le ensuite avec cls) : ")
+    else:
+        raw = getpass.getpass("3. Collez le jeton (la saisie reste invisible ; clic droit pour coller) : ")
+    token = "".join(raw.split()).strip("\"'")  # espaces, retours à la ligne et guillemets collés par erreur
     if not token:
         print("Annulé.")
         return 2
+    problem = check_token(token)
+    if problem:
+        print(problem)
+        print("Autre méthode : python -m orionx.main alert-setup --visible")
+        return 3
     try:
         chat = TelegramNotifier(token, "").discover_chat_id()
         if chat is None:
@@ -525,6 +534,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--random-runs", type=int, default=20, help="backtest : nombre de tirages du témoin aléatoire")
     parser.add_argument("--csv", type=Path, default=None, help="backtest : exporte les trades en CSV")
     parser.add_argument("--h1", action="store_true", help="backtest : protocole H-1/V-3 (réserve de 6 mois jamais évaluée ici)")
+    parser.add_argument("--visible", action="store_true", help="alert-setup : saisie du jeton visible (si le collage invisible échoue)")
     parser.add_argument("--open-holdout", default=None, metavar="FILTRE",
                         help="backtest --h1 : ouvre la réserve UNE fois, pour le candidat désigné")
     args = parser.parse_args(argv)
@@ -559,7 +569,7 @@ def main(argv: list[str] | None = None) -> int:
             return asyncio.run(h1_cmd(args.symbol, args.open_holdout, cfg))
         return asyncio.run(backtest_cmd(args.symbol, args.bars, args.folds, args.csv, args.filters, args.random_runs, args.strategy, cfg))
     if args.command in ("alert-setup", "alert-test"):
-        return alert_cmd(args.command)
+        return alert_cmd(args.command, args.visible)
     if args.command == "demo-trade":
         return asyncio.run(demo_trade(args.yes, args.hold))
     return asyncio.run(mt5_check())

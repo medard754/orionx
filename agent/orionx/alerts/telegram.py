@@ -8,6 +8,8 @@ from __future__ import annotations
 
 import json
 import os
+import re
+import urllib.error
 import urllib.parse
 import urllib.request
 from collections.abc import Callable, Mapping
@@ -39,8 +41,12 @@ class TelegramNotifier:
         try:
             with self._open(req, timeout=self._timeout) as resp:
                 body = json.loads(resp.read().decode("utf-8"))
+        except urllib.error.HTTPError as exc:  # Telegram a bien répondu : c'est le jeton ou la conversation qui pose problème
+            hint = {401: "jeton refusé : recopiez-le depuis @BotFather", 404: "jeton mal formé : recopiez-le depuis @BotFather",
+                    400: "conversation introuvable : envoyez /start au bot"}.get(exc.code, "")  # fmt: skip
+            raise AlertError(f"Telegram a refusé (HTTP {exc.code}) {hint}".strip()) from None
         except Exception as exc:  # noqa: BLE001 - message masqué, et pas de chaînage : la requête contient le jeton
-            raise AlertError(f"Telegram injoignable : {self._mask(str(exc))}") from None
+            raise AlertError(f"Telegram injoignable (réseau) : {self._mask(str(exc))}") from None
         if not body.get("ok"):
             raise AlertError(f"Telegram a refusé : {self._mask(str(body.get('description')))}")
         return body.get("result")
@@ -56,6 +62,19 @@ class TelegramNotifier:
             if "id" in chat:
                 return str(chat["id"])
         return None
+
+
+TOKEN_RE = re.compile(r"\d{6,12}:[A-Za-z0-9_-]{30,50}")
+
+
+def check_token(token: str) -> str | None:
+    """Message d'erreur si `token` n'a pas la forme d'un jeton de bot, sinon None. N'affiche JAMAIS le jeton."""
+    if TOKEN_RE.fullmatch(token):
+        return None
+    odd = sum(1 for c in token if not (c.isalnum() or c in ":_-"))
+    detail = f"{len(token)} caractère(s) reçu(s)" + (f", dont {odd} inattendu(s)" if odd else "")
+    return (f"Ce n'est pas un jeton de bot ({detail}). Attendu : des chiffres, deux-points, puis environ 35 caractères. "
+            "Le collage dans une saisie invisible échoue souvent sous Windows : voir l'autre méthode ci-dessous.")  # fmt: skip
 
 
 def _keyring() -> ModuleType | None:

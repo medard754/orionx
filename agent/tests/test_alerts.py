@@ -156,6 +156,28 @@ class TelegramTests(unittest.TestCase):
             TelegramNotifier(TOKEN, "42", opener=refused).send("x")
         self.assertNotIn(TOKEN, str(ctx.exception))
 
+    def test_a_refused_token_is_not_reported_as_a_network_failure(self) -> None:
+        def unauthorized(req, timeout):
+            raise urllib.error.HTTPError(req.full_url, 401, "Unauthorized", {}, None)
+
+        with self.assertRaises(AlertError) as ctx:
+            TelegramNotifier(TOKEN, "42", opener=unauthorized).send("x")
+        self.assertIn("jeton refusé", str(ctx.exception))
+        self.assertNotIn("injoignable", str(ctx.exception))
+        self.assertNotIn(TOKEN, str(ctx.exception))
+
+    def test_token_shape_is_checked_without_ever_printing_it(self) -> None:
+        from orionx.alerts.telegram import check_token
+
+        good = "7412345678:AAH3xQ_abcdefghijklmnopqrstuvwxyz012"
+        self.assertIsNone(check_token(good))
+        for bad in ("\x16", "", "7412345678", good + "\x16", "AAH3xQ_abcdefghijklmnopqrstuvwxyz012"):
+            msg = check_token(bad)
+            self.assertIsNotNone(msg, repr(bad))
+            if bad:
+                self.assertNotIn(bad, msg)
+        self.assertIn("1 inattendu", check_token(good + "\x16"))  # Ctrl+V dans une saisie invisible
+
     def test_discover_chat_id_takes_the_latest_conversation(self) -> None:
         updates = {"ok": True, "result": [{"message": {"chat": {"id": 1}}}, {"message": {"chat": {"id": 777}}}]}
         n = TelegramNotifier(TOKEN, "", opener=lambda req, timeout: FakeResponse(json.dumps(updates).encode()))
@@ -228,6 +250,35 @@ class CommandTests(unittest.TestCase):
         with mock.patch("orionx.alerts.telegram.load_credentials", return_value=None), contextlib.redirect_stdout(out):
             self.assertEqual(m.alert_cmd("alert-test"), 2)
         self.assertIn("alert-setup", out.getvalue())
+
+    def test_setup_rejects_a_bad_paste_before_calling_telegram_and_suggests_visible_mode(self) -> None:
+        import contextlib
+
+        import orionx.main as m
+
+        out = io.StringIO()
+        called = []
+        with (mock.patch("getpass.getpass", return_value="\x16"),
+              mock.patch("orionx.alerts.telegram.TelegramNotifier._call", lambda *a, **k: called.append(a)),
+              contextlib.redirect_stdout(out)):  # fmt: skip
+            self.assertEqual(m.alert_cmd("alert-setup"), 3)
+        self.assertEqual(called, [], "aucun appel réseau avec un jeton manifestement faux")
+        self.assertIn("--visible", out.getvalue())
+
+    def test_visible_setup_accepts_a_token_pasted_with_spaces_and_quotes(self) -> None:
+        import contextlib
+
+        import orionx.main as m
+
+        good = "7412345678:AAH3xQ_abcdefghijklmnopqrstuvwxyz012"
+        stored = {}
+        with (mock.patch("builtins.input", return_value=f'  "{good}"\n'),
+              mock.patch("orionx.alerts.telegram.TelegramNotifier.discover_chat_id", lambda self: "42"),
+              mock.patch("orionx.alerts.telegram.TelegramNotifier.send", lambda self, text: None),
+              mock.patch("orionx.alerts.telegram.store_credentials", lambda t, c: stored.update(t=t, c=c)),
+              contextlib.redirect_stdout(io.StringIO())):  # fmt: skip
+            self.assertEqual(m.alert_cmd("alert-setup", visible=True), 0)
+        self.assertEqual(stored, {"t": good, "c": "42"})
 
     def test_alert_test_sends_one_message(self) -> None:
         import contextlib
