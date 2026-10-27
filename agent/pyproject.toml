@@ -18,6 +18,9 @@ api = ["fastapi>=0.110", "uvicorn>=0.29"]  # API locale (T-14), facultative  # c
 [tool.setuptools.packages.find]
 include = ["orionx*"]
 
+[tool.setuptools.package-data]
+"orionx.api" = ["static/*"]  # fichiers du dashboard (M9)
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 

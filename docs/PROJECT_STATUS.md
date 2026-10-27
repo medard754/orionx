@@ -32,6 +32,10 @@ Dernière mise à jour : 27 oct. 2026 · Phase : validation M3 à M7 sur MT5 dé
   (`alerts: signals: true`, pour V-4). Testé sur simulateur et faux Telegram. **Bot @orionx_trader_bot connecté le 27 oct.** (jeton dans le coffre Windows) ;
   reste le test de bout en bout avec l'agent : `RUNBOOK_VALIDATION.md` §10.2.
 
+- [x] **M9 dashboard web local** (27 oct. 2026) : état, positions, signaux à approuver ou rejeter, arrêt d'urgence, événements en
+  direct. Connexion sans jamais exposer le jeton (code à usage unique -> cookie de session), anti-CSRF, CSP stricte, aucune
+  injection de HTML (ADR 0008). Testé sur simulateur et serveur local réel ; **à valider dans un navigateur** : `RUNBOOK_VALIDATION.md` §12.
+
 ## À faire (ordre recommandé)
 
 | ID | Tâche | Preuve que c'est fini |

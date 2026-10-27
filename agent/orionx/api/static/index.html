@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ORIONX Dashboard</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <header>
+    <h1>ORIONX</h1>
+    <span id="mode" class="pill">…</span>
+    <span id="health" class="pill">connexion…</span>
+    <span id="updated" class="muted"></span>
+  </header>
+
+  <div id="banner" class="banner" hidden></div>
+
+  <main>
+    <section class="card" aria-labelledby="t-state">
+      <h2 id="t-state">État</h2>
+      <dl class="kv">
+        <dt>Compte</dt><dd id="account">—</dd>
+        <dt>Équité</dt><dd id="equity">—</dd>
+        <dt>Solde</dt><dd id="balance">—</dd>
+        <dt>Cycles</dt><dd id="cycles">—</dd>
+        <dt>Arrêts actifs</dt><dd id="halts">—</dd>
+      </dl>
+    </section>
+
+    <section class="card wide" aria-labelledby="t-signals">
+      <h2 id="t-signals">Signaux en attente</h2>
+      <p class="muted">Chaque approbation est ré-évaluée par le gestionnaire de risques avec les prix du moment.</p>
+      <table>
+        <thead><tr><th>Symbole</th><th>Sens</th><th>Stop</th><th>Objectif</th><th>Stratégie</th><th>Valable jusqu'à</th><th></th></tr></thead>
+        <tbody id="signals"><tr><td colspan="7" class="muted">Aucun signal.</td></tr></tbody>
+      </table>
+    </section>
+
+    <section class="card wide" aria-labelledby="t-positions">
+      <h2 id="t-positions">Positions ouvertes</h2>
+      <table>
+        <thead><tr><th>Ticket</th><th>Symbole</th><th>Sens</th><th>Lots</th><th>Ouverture</th><th>Stop</th><th>Objectif</th><th>Résultat</th></tr></thead>
+        <tbody id="positions"><tr><td colspan="8" class="muted">Aucune position.</td></tr></tbody>
+      </table>
+    </section>
+
+    <section class="card" aria-labelledby="t-kill">
+      <h2 id="t-kill">Arrêt d'urgence</h2>
+      <p class="muted">Appliqué au prochain cycle de l'agent. Levée : <code>clear-kill</code> dans un terminal.</p>
+      <div class="kill">
+        <button type="button" data-level="1">1 · Pause des entrées</button>
+        <button type="button" data-level="2">2 · Protéger les positions</button>
+        <button type="button" data-level="3" class="danger">3 · Tout clôturer</button>
+      </div>
+    </section>
+
+    <section class="card wide" aria-labelledby="t-events">
+      <h2 id="t-events">Événements en direct <span id="live" class="pill">…</span></h2>
+      <ol id="events" class="events"></ol>
+    </section>
+  </main>
+
+  <script src="/app.js"></script>
+</body>
+</html>

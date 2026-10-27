@@ -112,6 +112,18 @@ Attendu : ordre démo exécuté avec SL/TP, `SignalApproval` (via api) dans `aud
 -ContentType application/json -Body '{"level":1}'` -> `KillSwitchActivated` et alerte Telegram ; `clear-kill` ensuite.
 Ne jamais coller le contenu de `data\api_token` dans un message ou un ticket.
 
+## 12. Dashboard web (M9)
+**12.1** `python -m pip install -e ".[api]"` (si fait), `autonomy: semi_auto` dans config.yaml, puis
+`python -m orionx.main run --config config.yaml --api --dashboard`. Le navigateur s'ouvre sur le dashboard (aucun jeton à saisir).
+Si le navigateur se ferme : `python -m orionx.main dashboard` (dossier `agent`) le rouvre.
+**12.2 À regarder** : pastille « en marche » (pas « agent injoignable »), « démo » dans Compte, équité et solde, pastille « en direct »
+sur les événements ; arrêter MT5 doit faire passer la pastille en « mode sûr » puis les événements de reconnexion s'afficher.
+**12.3 Signal** : à l'arrivée d'un signal, il apparaît avec Approuver / Rejeter ; une confirmation est demandée ; l'approbation envoie
+un ordre démo avec stop et objectif, la position apparaît dans « Positions ouvertes ». Un signal expiré ne peut pas être approuvé.
+**12.4 Arrêt d'urgence** : bouton niveau 1 + confirmation -> alerte Telegram et pastille « mode sûr » au cycle suivant ; `clear-kill` ensuite.
+**12.5 Sécurité** : copier l'adresse du dashboard dans un autre navigateur (sans cookie) -> « Session expirée ». Relancer
+`dashboard` -> le nouveau code fonctionne UNE fois (le recoller dans l'adresse échoue).
+
 ## 7. NE PAS FAIRE avant validation complète
 Activer `autonomy: auto` + `--allow-auto`. Cette étape ne vient qu'après : étapes 1 à 6 OK, une semaine de
 fonctionnement en signaux seuls, revue de code des modules `risk/`, `execution/`, `monitoring/` par les deux
