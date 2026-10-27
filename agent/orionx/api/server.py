@@ -127,6 +127,7 @@ def create_app(agent: Agent, token: str, kill_flag: Path, feed: EventFeed | None
     app.add_middleware(TrustedHostMiddleware, allowed_hosts=[HOST, "localhost"])
     sessions = sessions or Sessions()
     app.state.sessions = sessions
+    app.state.feed = feed
     origins = {f"http://{HOST}:{port}", f"http://localhost:{port}"}
     csp = (f"default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self'; connect-src 'self' ws://{HOST}:{port} "
            f"ws://localhost:{port}; base-uri 'none'; form-action 'none'; frame-ancestors 'none'")  # fmt: skip
@@ -229,7 +230,10 @@ def create_app(agent: Agent, token: str, kill_flag: Path, feed: EventFeed | None
         q = feed.subscribe()
         try:
             while True:
-                item: dict[str, Any] = await q.get()
+                item = await q.get()
+                if item is None:  # arrêt de l'API : on ferme proprement (1001 = départ)
+                    await ws.close(code=status.WS_1001_GOING_AWAY)
+                    break
                 await ws.send_json(item)
         except (WebSocketDisconnect, RuntimeError):
             pass
@@ -248,8 +252,12 @@ async def serve(app: FastAPI, port: int, stop: asyncio.Event) -> None:
         def capture_signals(self):  # type: ignore[no-untyped-def]  # l'agent garde la main sur Ctrl+C
             yield
 
-    server = _Server(uvicorn.Config(app, host=HOST, port=port, log_level="warning", access_log=False, lifespan="off"))
+    server = _Server(uvicorn.Config(app, host=HOST, port=port, log_level="warning", access_log=False, lifespan="off",
+                                    timeout_graceful_shutdown=3))  # fmt: skip
     task = asyncio.create_task(server.serve())
     await stop.wait()
+    feed: EventFeed | None = getattr(app.state, "feed", None)
+    if feed is not None:
+        feed.close()  # ferme les flux des navigateurs : sinon l'arrêt attendrait leur déconnexion
     server.should_exit = True
     await task

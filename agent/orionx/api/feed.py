@@ -17,7 +17,7 @@ from orionx.core.bus import EventBus
 from orionx.core.models import utcnow
 
 log = logging.getLogger(__name__)
-Item = dict[str, Any]
+Item = dict[str, Any] | None  # None : fin du flux (arrêt de l'API)
 
 
 class EventFeed:
@@ -53,6 +53,14 @@ class EventFeed:
                     self.unsubscribe(q)
         except Exception:  # noqa: BLE001 - le flux ne doit jamais casser l'agent
             log.exception("Événement %s non diffusé", kind)
+
+    def close(self) -> None:
+        """À l'arrêt : chaque abonné reçoit la fin du flux et ferme sa connexion (sinon l'arrêt du serveur attend)."""
+        with self._lock:
+            subs = list(self._subs.items())
+        for q, loop in subs:
+            with contextlib.suppress(RuntimeError):
+                loop.call_soon_threadsafe(self._put, q, None)
 
     @staticmethod
     def _put(q: asyncio.Queue[Item], item: Item) -> None:

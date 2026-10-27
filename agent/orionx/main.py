@@ -152,6 +152,7 @@ async def run_agent(cfg: AppConfig, allow_auto: bool, cycle: float, max_cycles: 
     from orionx.audit.log import AuditLog
     from orionx.data.engine import MarketStore
     from orionx.decision.registry import build_engine
+    from orionx.monitoring.flag import read_kill_flag
     from orionx.risk.guard import RiskParamGuard
 
     gw = _mt5_gateway()
@@ -183,6 +184,10 @@ async def run_agent(cfg: AppConfig, allow_auto: bool, cycle: float, max_cycles: 
     print(f"Stratégies activées : {list(cfg.strategies)} · profil de risque actif : {agent.risk.cfg.risk_per_trade_pct} % par trade.")
     print(f"Agent démarré : autonomie={agent.autonomy}, symboles={cfg.symbols}. Ctrl+C pour arrêter.")
     print("Les positions ouvertes restent protégées par leur stop-loss même si l'agent s'arrête.")
+    flag = read_kill_flag(KILL_FLAG)
+    if flag:  # un drapeau oublié est appliqué dès le 1er cycle (niveau 3 : clôture de toutes les positions)
+        print(f"ATTENTION : drapeau d'arrêt d'urgence présent (niveau {flag.get('level')}, « {flag.get('reason', '')} », "
+              f"posé le {flag.get('at', '?')}) : il sera appliqué dès le premier cycle. Pour le lever : python -m orionx.main clear-kill")
     api_stop, api_task = asyncio.Event(), None
     if api_port:
         token_file = DATA_DIR / "api_token"

@@ -13,7 +13,7 @@ dependencies = ["PyYAML>=6.0"]
 dev = ["pytest>=8", "hypothesis>=6", "ruff~=0.17.0", "mypy~=2.4", "types-PyYAML", "httpx>=0.27"]  # outils bloquants en CI : versions bornées
 mt5 = ["MetaTrader5; sys_platform == 'win32'"]
 alerts = ["keyring>=25"]
-api = ["fastapi>=0.110", "uvicorn>=0.29"]  # API locale (T-14), facultative  # coffre Windows pour le jeton Telegram (facultatif)
+api = ["fastapi>=0.110", "uvicorn>=0.29", "websockets>=12"]  # websockets : sans lui, uvicorn refuse le flux en direct  # API locale (T-14), facultative  # coffre Windows pour le jeton Telegram (facultatif)
 
 [tool.setuptools.packages.find]
 include = ["orionx*"]

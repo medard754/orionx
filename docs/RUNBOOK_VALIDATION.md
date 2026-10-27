@@ -113,7 +113,7 @@ Attendu : ordre démo exécuté avec SL/TP, `SignalApproval` (via api) dans `aud
 Ne jamais coller le contenu de `data\api_token` dans un message ou un ticket.
 
 ## 12. Dashboard web (M9)
-**12.1** `python -m pip install -e ".[api]"` (si fait), `autonomy: semi_auto` dans config.yaml, puis
+**12.1** `python -m pip install -e ".[api]"` (à refaire après le 28 oct. : ajoute `websockets`, sans lequel le flux en direct reste muet), `autonomy: semi_auto` dans config.yaml, puis
 `python -m orionx.main run --config config.yaml --api --dashboard`. Le navigateur s'ouvre sur le dashboard (aucun jeton à saisir).
 Si le navigateur se ferme : `python -m orionx.main dashboard` (dossier `agent`) le rouvre.
 **12.2 À regarder** : pastille « en marche » (pas « agent injoignable »), « démo » dans Compte, équité et solde, pastille « en direct »

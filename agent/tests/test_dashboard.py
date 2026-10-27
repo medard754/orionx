@@ -134,5 +134,49 @@ class DashboardEventsTests(unittest.TestCase):
         self.assertEqual(ctx.exception.code, 1008, "détournement de WebSocket par un autre site refusé")
 
 
+class RealServerWebSocketTests(unittest.IsolatedAsyncioTestCase):
+    """Le client de test gère le WebSocket tout seul : seul un VRAI serveur uvicorn révèle une bibliothèque manquante
+    (constaté le 28 oct. : « No supported WebSocket library detected », flux en direct muet)."""
+
+    async def test_events_stream_through_the_real_uvicorn_server(self) -> None:
+        import asyncio
+        import json
+        import socket
+
+        import websockets
+
+        from orionx.api.server import serve
+        from tests.test_api import SimpleAgentStub
+
+        with socket.socket() as sock:
+            sock.bind(("127.0.0.1", 0))
+            port = sock.getsockname()[1]
+        feed, token, stop = EventFeed(), new_token(), asyncio.Event()
+        app = create_app(SimpleAgentStub(), token, Path(tempfile.gettempdir()) / "unused.json", feed, port=port)
+        task = asyncio.create_task(serve(app, port, stop))
+        try:
+            ws = None
+            for _ in range(50):  # le temps que le serveur écoute
+                try:
+                    ws = await websockets.connect(f"ws://127.0.0.1:{port}/api/events?token={token}")
+                    break
+                except OSError:
+                    await asyncio.sleep(0.1)
+            self.assertIsNotNone(ws, "serveur injoignable")
+            assert ws is not None
+            await asyncio.sleep(0.1)  # abonnement côté serveur
+            feed.handle("GatewayRecovered", {})
+            msg = json.loads(await asyncio.wait_for(ws.recv(), 5))
+            self.assertEqual(msg["kind"], "GatewayRecovered")
+            stop.set()  # navigateur toujours connecté : l'arrêt ne doit pas l'attendre
+            await asyncio.wait_for(task, 5)
+            with self.assertRaises(websockets.ConnectionClosed) as ctx:
+                await asyncio.wait_for(ws.recv(), 5)
+            self.assertEqual(ctx.exception.rcvd.code if ctx.exception.rcvd else None, 1001)
+        finally:
+            stop.set()
+            await asyncio.wait_for(task, 5)
+
+
 if __name__ == "__main__":
     unittest.main()

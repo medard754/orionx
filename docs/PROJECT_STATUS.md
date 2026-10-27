@@ -34,7 +34,8 @@ Dernière mise à jour : 27 oct. 2026 · Phase : validation M3 à M7 sur MT5 dé
 
 - [x] **M9 dashboard web local** (27 oct. 2026) : état, positions, signaux à approuver ou rejeter, arrêt d'urgence, événements en
   direct. Connexion sans jamais exposer le jeton (code à usage unique -> cookie de session), anti-CSRF, CSP stricte, aucune
-  injection de HTML (ADR 0008). Testé sur simulateur et serveur local réel ; **à valider dans un navigateur** : `RUNBOOK_VALIDATION.md` §12.
+  injection de HTML (ADR 0008). **Essayé dans le navigateur le 28 oct.** avec l'agent sur MT5 démo : état, arrêts d'urgence 1 et 3, alertes
+  Telegram, cotation croisée gérée -> OK ; flux en direct muet (bibliothèque `websockets` manquante) : corrigé, à revérifier (§12).
 
 ## À faire (ordre recommandé)
 
