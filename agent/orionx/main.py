@@ -4,6 +4,7 @@
   python -m orionx.main mt5-check         # lecture seule d'un compte DÉMO MT5 (aucun ordre)
   python -m orionx.main demo-trade        # T-02 : UN ordre démo de 0,01 lot, puis fermeture
   python -m orionx.main run               # boucle de l'agent (signaux seuls par défaut)
+  python -m orionx.main run --api         # T-14 : + API locale (approbation des signaux, état, flux en direct)
   python -m orionx.main kill --level 3    # arrêt d'urgence depuis un autre terminal
   python -m orionx.main clear-kill        # retire le drapeau d'arrêt d'urgence
   python -m orionx.main audit-verify      # vérifie l'intégrité du journal
@@ -21,6 +22,7 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import contextlib
 import logging
 import os
 import sys
@@ -142,7 +144,7 @@ async def demo_trade(auto_yes: bool, hold: float) -> int:
         await gw.shutdown()
 
 
-async def run_agent(cfg: AppConfig, allow_auto: bool, cycle: float, max_cycles: int | None) -> int:
+async def run_agent(cfg: AppConfig, allow_auto: bool, cycle: float, max_cycles: int | None, api_port: int | None = None) -> int:
     from orionx.agent import Agent
     from orionx.audit.log import AuditLog
     from orionx.data.engine import MarketStore
@@ -161,17 +163,37 @@ async def run_agent(cfg: AppConfig, allow_auto: bool, cycle: float, max_cycles: 
         print(f"Calendrier économique : {len(calendar.events)} événements chargés ({cfg.analysis.calendar_path}).")
     else:
         print("Aucun calendrier économique configuré : pas de blocage autour des annonces (analysis.calendar_path).")
+    feed = None
+    if api_port:
+        try:
+            from orionx.api import server as api
+            from orionx.api.feed import EventFeed
+        except ImportError:
+            print('API locale indisponible : pip install -e ".[api]" (ou relancez sans --api).')
+            return 2
+        feed = EventFeed()
     alerts = _alert_router(cfg)
     await gw.connect()
     engine = build_engine(cfg.strategies, cfg.decision, cfg.analysis)
     agent = Agent(gw, cfg, engine=engine, risk_guard=RiskParamGuard(DATA_DIR), audit=audit, store=MarketStore(DATA_DIR / "market.db"),
-                  calendar=calendar, allow_auto=allow_auto, kill_flag=KILL_FLAG, alerts=alerts)  # fmt: skip
+                  calendar=calendar, allow_auto=allow_auto, kill_flag=KILL_FLAG, alerts=alerts, feed=feed)  # fmt: skip
     print(f"Stratégies activées : {list(cfg.strategies)} · profil de risque actif : {agent.risk.cfg.risk_per_trade_pct} % par trade.")
     print(f"Agent démarré : autonomie={agent.autonomy}, symboles={cfg.symbols}. Ctrl+C pour arrêter.")
     print("Les positions ouvertes restent protégées par leur stop-loss même si l'agent s'arrête.")
+    api_stop, api_task = asyncio.Event(), None
+    if api_port:
+        token_file = DATA_DIR / "api_token"
+        token = api.new_token()  # nouveau jeton à chaque démarrage
+        api.write_token(token_file, token)
+        api_task = asyncio.create_task(api.serve(api.create_app(agent, token, KILL_FLAG, feed), api_port, api_stop))
+        print(f"API locale : http://127.0.0.1:{api_port}/api/status (jeton dans {token_file}, jamais affiché ici).")
     try:
         await agent.run(asyncio.Event(), cycle_seconds=cycle, max_cycles=max_cycles)
     finally:
+        if api_task:
+            api_stop.set()
+            with contextlib.suppress(Exception):
+                await asyncio.wait_for(api_task, timeout=5)
         await gw.shutdown()
         if alerts:
             alerts.close()  # laisse partir les dernières alertes (au plus 30 s, réseau lent)
@@ -537,6 +559,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--allow-auto", action="store_true", help="run : autorise l'exécution automatique des ordres")
     parser.add_argument("--cycle", type=float, default=1.0, help="run : secondes entre deux cycles")
     parser.add_argument("--max-cycles", type=int, default=None, help="run : s'arrêter après N cycles")
+    parser.add_argument("--api", action="store_true", help="run : démarre l'API locale (127.0.0.1 seulement, jeton obligatoire)")
+    parser.add_argument("--api-port", type=int, default=8765, help="run --api : port de l'API locale")
     parser.add_argument("--symbol", default="EURUSD", help="backtest : symbole")
     parser.add_argument("--bars", type=int, default=3000, help="backtest : nombre de bougies H1")
     parser.add_argument("--folds", type=int, default=4, help="backtest : nombre de périodes consécutives")
@@ -558,7 +582,7 @@ def main(argv: list[str] | None = None) -> int:
         return asyncio.run(simulate(cfg))
     if args.command == "run":
         try:
-            return asyncio.run(run_agent(cfg, args.allow_auto, args.cycle, args.max_cycles))
+            return asyncio.run(run_agent(cfg, args.allow_auto, args.cycle, args.max_cycles, args.api_port if args.api else None))
         except KeyboardInterrupt:
             print("Arrêt demandé par l'utilisateur.")
             return 0

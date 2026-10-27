@@ -121,16 +121,22 @@ class AuditLog:
         self._db.close()
 
 
-def attach(bus: EventBus, audit: AuditLog) -> None:
-    """Journalise les événements importants du bus (les ticks sont volontairement exclus)."""
+def audited_events() -> tuple[type, ...]:
+    """Événements importants du bus (les ticks sont volontairement exclus) : journal d'audit et flux de l'API."""
     from orionx.core import events as ev
+
+    return (
+        ev.TradeProposed, ev.TradeApproved, ev.TradeRejected, ev.OrderFilled, ev.OrderFailed,
+        ev.CircuitBreakerTripped, ev.KillSwitchActivated, ev.DataStale, ev.DataRecovered, ev.PositionAdjusted,
+        ev.MarketStateUpdated, ev.ThesisDegraded, ev.ExecutionQuality, ev.DecisionNote,
+    )  # fmt: skip
+
+
+def attach(bus: EventBus, audit: AuditLog) -> None:
+    """Journalise les événements importants du bus."""
 
     async def record(event: Any) -> None:
         audit.append(type(event).__name__, event)
 
-    for cls in (
-        ev.TradeProposed, ev.TradeApproved, ev.TradeRejected, ev.OrderFilled, ev.OrderFailed,
-        ev.CircuitBreakerTripped, ev.KillSwitchActivated, ev.DataStale, ev.DataRecovered, ev.PositionAdjusted,
-        ev.MarketStateUpdated, ev.ThesisDegraded, ev.ExecutionQuality, ev.DecisionNote,
-    ):  # fmt: skip
+    for cls in audited_events():
         bus.subscribe(cls, record)
