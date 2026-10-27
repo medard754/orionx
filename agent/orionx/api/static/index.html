@@ -3,63 +3,102 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
   <title>ORIONX Dashboard</title>
+  <link rel="icon" type="image/png" href="/favicon.ico">
   <link rel="stylesheet" href="/style.css">
 </head>
 <body>
-  <header>
-    <h1>ORIONX</h1>
-    <span id="mode" class="pill">…</span>
-    <span id="health" class="pill">connexion…</span>
-    <span id="updated" class="muted"></span>
+  <header class="topbar">
+    <img class="brand" src="/logo.png" alt="ORIONX, AI Trading Agent" width="180" height="60">
+    <div class="status" aria-live="polite">
+      <span id="mode" class="pill">…</span>
+      <span id="health" class="pill"><span class="dot" aria-hidden="true"></span><span class="label">connexion…</span></span>
+    </div>
+    <span id="updated" class="updated"></span>
   </header>
+  <div class="glowline" aria-hidden="true"></div>
 
-  <div id="banner" class="banner" hidden></div>
+  <div id="banner" class="banner" role="alert" hidden></div>
 
-  <main>
-    <section class="card" aria-labelledby="t-state">
-      <h2 id="t-state">État</h2>
-      <dl class="kv">
-        <dt>Compte</dt><dd id="account">—</dd>
-        <dt>Équité</dt><dd id="equity">—</dd>
-        <dt>Solde</dt><dd id="balance">—</dd>
-        <dt>Cycles</dt><dd id="cycles">—</dd>
-        <dt>Arrêts actifs</dt><dd id="halts">—</dd>
-      </dl>
+  <main class="layout">
+    <section class="kpis" aria-label="Indicateurs">
+      <article class="tile tile-equity">
+        <h2>Équité</h2>
+        <p class="value" id="equity">—</p>
+        <p class="sub" id="equity-delta">historique de la session</p>
+        <svg id="spark" class="spark" viewBox="0 0 300 60" preserveAspectRatio="none" role="img" aria-label="Évolution de l'équité pendant la session"></svg>
+      </article>
+      <article class="tile">
+        <h2>Solde</h2>
+        <p class="value" id="balance">—</p>
+        <p class="sub">positions fermées</p>
+      </article>
+      <article class="tile">
+        <h2>Résultat latent</h2>
+        <p class="value" id="pnl">—</p>
+        <p class="sub">positions ouvertes</p>
+      </article>
+      <article class="tile">
+        <h2>Positions</h2>
+        <p class="value" id="npos">—</p>
+        <p class="sub" id="nsig">— signal en attente</p>
+      </article>
+      <article class="tile">
+        <h2>Compte</h2>
+        <p class="value" id="account">—</p>
+        <p class="sub"><span id="cycles">—</span> cycles</p>
+      </article>
     </section>
 
-    <section class="card wide" aria-labelledby="t-signals">
-      <h2 id="t-signals">Signaux en attente</h2>
-      <p class="muted">Chaque approbation est ré-évaluée par le gestionnaire de risques avec les prix du moment.</p>
-      <table>
-        <thead><tr><th>Symbole</th><th>Sens</th><th>Stop</th><th>Objectif</th><th>Stratégie</th><th>Valable jusqu'à</th><th></th></tr></thead>
-        <tbody id="signals"><tr><td colspan="7" class="muted">Aucun signal.</td></tr></tbody>
-      </table>
-    </section>
-
-    <section class="card wide" aria-labelledby="t-positions">
-      <h2 id="t-positions">Positions ouvertes</h2>
-      <table>
-        <thead><tr><th>Ticket</th><th>Symbole</th><th>Sens</th><th>Lots</th><th>Ouverture</th><th>Stop</th><th>Objectif</th><th>Résultat</th></tr></thead>
-        <tbody id="positions"><tr><td colspan="8" class="muted">Aucune position.</td></tr></tbody>
-      </table>
-    </section>
-
-    <section class="card" aria-labelledby="t-kill">
-      <h2 id="t-kill">Arrêt d'urgence</h2>
-      <p class="muted">Appliqué au prochain cycle de l'agent. Levée : <code>clear-kill</code> dans un terminal.</p>
-      <div class="kill">
-        <button type="button" data-level="1">1 · Pause des entrées</button>
-        <button type="button" data-level="2">2 · Protéger les positions</button>
-        <button type="button" data-level="3" class="danger">3 · Tout clôturer</button>
+    <section class="card span-8" aria-labelledby="t-signals">
+      <div class="card-head">
+        <h2 id="t-signals">Signaux en attente</h2>
+        <span class="hint">ré-évalués par le risque avec les prix du moment</span>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Symbole</th><th>Sens</th><th>Stop</th><th>Objectif</th><th>Stratégie</th><th>Valable jusqu'à</th><th></th></tr></thead>
+          <tbody id="signals"><tr><td colspan="7" class="empty">Aucun signal.</td></tr></tbody>
+        </table>
       </div>
     </section>
 
-    <section class="card wide" aria-labelledby="t-events">
-      <h2 id="t-events">Événements en direct <span id="live" class="pill">…</span></h2>
+    <section class="card span-4 card-danger" aria-labelledby="t-kill">
+      <div class="card-head">
+        <h2 id="t-kill">Arrêt d'urgence</h2>
+      </div>
+      <p class="halts">Arrêts actifs : <strong id="halts">—</strong></p>
+      <div class="kill">
+        <button type="button" class="btn btn-l1" data-level="1"><b>1</b> Pause des entrées</button>
+        <button type="button" class="btn btn-l2" data-level="2"><b>2</b> Protéger les positions</button>
+        <button type="button" class="btn btn-l3" data-level="3"><b>3</b> Tout clôturer</button>
+      </div>
+      <p class="hint">Appliqué au prochain cycle. Levée : <code>clear-kill</code> dans un terminal.</p>
+    </section>
+
+    <section class="card span-8" aria-labelledby="t-positions">
+      <div class="card-head">
+        <h2 id="t-positions">Positions ouvertes</h2>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Ticket</th><th>Symbole</th><th>Sens</th><th>Lots</th><th>Ouverture</th><th>Stop</th><th>Objectif</th><th>Résultat</th></tr></thead>
+          <tbody id="positions"><tr><td colspan="8" class="empty">Aucune position.</td></tr></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="card span-4" aria-labelledby="t-events">
+      <div class="card-head">
+        <h2 id="t-events">Événements</h2>
+        <span id="live" class="pill pill-sm">…</span>
+      </div>
       <ol id="events" class="events"></ol>
     </section>
   </main>
+
+  <footer class="foot">ORIONX · agent local · compte démo uniquement · chaque décision est écrite dans le journal d'audit</footer>
 
   <script src="/app.js"></script>
 </body>

@@ -103,6 +103,11 @@ class DashboardTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(r.headers["x-content-type-options"], "nosniff")
         for path in ("/app.js", "/style.css"):
             self.assertEqual((await self.client.get(path)).status_code, 200, path)
+        for path in ("/logo.png", "/icon.png", "/favicon.ico"):  # identité visuelle, servie par notre origine (CSP img-src 'self')
+            r = await self.client.get(path)
+            self.assertEqual((r.status_code, r.headers["content-type"]), (200, "image/png"), path)
+            self.assertTrue(r.content.startswith(b"\x89PNG"), path)
+            self.assertLess(len(r.content), 300_000, f"{path} : image trop lourde pour une page locale")
 
     def test_dashboard_script_never_injects_html(self) -> None:
         js = (STATIC / "app.js").read_text(encoding="utf-8")

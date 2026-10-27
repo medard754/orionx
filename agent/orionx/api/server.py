@@ -185,6 +185,18 @@ def create_app(agent: Agent, token: str, kill_flag: Path, feed: EventFeed | None
     async def style_css() -> FileResponse:
         return FileResponse(STATIC / "style.css", media_type="text/css; charset=utf-8")
 
+    @app.get("/logo.png")
+    async def logo() -> FileResponse:
+        return FileResponse(STATIC / "logo.png", media_type="image/png")
+
+    @app.get("/icon.png")
+    async def icon() -> FileResponse:
+        return FileResponse(STATIC / "icon.png", media_type="image/png")
+
+    @app.get("/favicon.ico")
+    async def favicon() -> FileResponse:
+        return FileResponse(STATIC / "favicon.png", media_type="image/png")
+
     @app.get("/api/status", dependencies=auth)
     async def get_status() -> StatusOut:
         acc = agent.last_account
