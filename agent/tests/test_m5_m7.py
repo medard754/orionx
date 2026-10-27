@@ -145,6 +145,23 @@ class GuardTests(unittest.TestCase):
             self.assertEqual(g.resolve_startup(safer), safer)  # plus prudent : appliqué
             self.assertEqual(g.active(), safer)
 
+    def test_restarts_do_not_push_back_the_delay_nor_overwrite_another_request(self) -> None:
+        with tempfile.TemporaryDirectory() as d:
+            clock = FixedClock()
+            g = self.guard(clock, d)
+            prudent, moderate, dynamic = (risk_from_profile(p) for p in ("prudent", "moderate", "dynamic"))
+            g.resolve_startup(prudent)
+            g.resolve_startup(moderate)
+            clock.advance(hours=10)
+            g.resolve_startup(moderate)  # redémarrage : le délai court toujours depuis la première demande
+            self.assertEqual(g.pending(), (moderate, T0 + timedelta(hours=24)))
+            g.request(dynamic)  # risk-set
+            g.resolve_startup(moderate)
+            self.assertEqual(g.pending()[0], dynamic)  # pas écrasée par config.yaml
+            self.assertIn("ignoré", g.startup_note)
+            g.resolve_startup(RiskConfig(risk_per_trade_pct=0.3))
+            self.assertIn("ANNULÉE", g.startup_note)  # l'annulation est visible
+
     def test_corrupted_active_file_refuses_startup_instead_of_accepting_config(self) -> None:
         from pathlib import Path
 

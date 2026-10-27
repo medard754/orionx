@@ -199,7 +199,8 @@ class Agent:
                 if bars:
                     self._last_bar[s] = bars[-1].time
         self._log("AgentStarted", {"autonomy": self.autonomy, "symbols": self.cfg.symbols, "equity": acc.equity,
-                                   "strategies": [e.strategy.name for e in self.engine.entries if e.enabled] if self.engine else [], "open_positions": len(self._prev)})  # fmt: skip
+                                   "strategies": [e.strategy.name for e in self.engine.entries if e.enabled] if self.engine else [], "open_positions": len(self._prev),
+                                   "risk_startup": self.guard.startup_note if self.guard else None})  # fmt: skip
 
     async def shutdown(self) -> None:
         self._log("AgentStopped", {"cycles": self.cycles, "note": "positions ouvertes protégées par leur stop-loss serveur"})

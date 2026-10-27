@@ -57,6 +57,7 @@ class RiskParamGuard:
         self._dir, self._latency, self._clock = Path(directory), timedelta(hours=latency_hours), clock
         self._dir.mkdir(parents=True, exist_ok=True)
         self._active_file, self._pending_file = self._dir / "risk_active.json", self._dir / "risk_pending.json"
+        self.startup_note = ""  # ce que resolve_startup a décidé (écrit dans le journal au démarrage)
 
     # --- fichiers -----------------------------------------------------------------
     @staticmethod
@@ -125,15 +126,24 @@ class RiskParamGuard:
 
     def resolve_startup(self, configured: RiskConfig) -> RiskConfig:
         """Configuration à utiliser au démarrage : jamais plus risquée que la dernière active sans passer par le délai."""
-        active = self.active()
+        active, pending = self.active(), self.pending()
         if active is None:
             self._set_active(configured)
+            self.startup_note = "premier démarrage : config.yaml devient la configuration active"
             return configured
         if configured == active:
+            self.startup_note = "config.yaml identique à la configuration active"
             return active
-        if is_riskier(active, configured):
-            self.request(configured)  # le fichier demande PLUS de risque : mise en attente, on garde l'ancienne
+        if is_riskier(active, configured):  # le fichier demande PLUS de risque : on garde l'ancienne
+            if pending is None:
+                when = self.request(configured).effective_at
+                self.startup_note = f"config.yaml plus risqué : mis en attente jusqu'au {when:%d/%m/%Y %H:%M} UTC"
+            elif pending[0] == configured:  # déjà en attente : le délai n'est PAS relancé à chaque redémarrage
+                self.startup_note = f"config.yaml plus risqué, déjà en attente jusqu'au {pending[1]:%d/%m/%Y %H:%M} UTC"
+            else:  # une autre demande attend (ex. risk-set) : elle n'est pas écrasée en silence
+                self.startup_note = "config.yaml plus risqué ignoré : une autre demande est déjà en attente (voir risk-status)"
             return active
         self._set_active(configured)
         self.cancel_pending()
+        self.startup_note = "config.yaml plus prudent : appliqué" + (" ; la demande en attente est ANNULÉE" if pending else "")
         return configured
