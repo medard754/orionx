@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import replace
 from datetime import datetime
 
-from orionx.core.errors import GatewayError
+from orionx.core.errors import GatewayError, InvalidQuoteError
 from orionx.core.models import (
     ORIONX_MAGIC,
     AccountState,
@@ -50,6 +50,7 @@ class SimulatedGateway:
         self.reconnect_failures = 0  # nombre de tentatives de reconnexion qui échouent avant de réussir
         self.reconnect_calls = 0
         self.login: int | None = 1001  # numéro du compte exposé par get_account
+        self.invalid_quotes: set[str] = set()  # symboles dont le courtier envoie une cotation croisée (bid > ask)
 
     # --- pilotage du simulateur -------------------------------------------------
     def set_tick(self, symbol: str, bid: float, ask: float, time: datetime) -> None:
@@ -103,6 +104,8 @@ class SimulatedGateway:
 
     async def get_tick(self, symbol: str) -> Tick:
         self._require()
+        if symbol in self.invalid_quotes:
+            raise InvalidQuoteError(f"cotation incohérente {symbol} (simulé)")
         try:
             return self._ticks[symbol]
         except KeyError as exc:

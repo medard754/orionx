@@ -13,6 +13,7 @@ from datetime import timedelta
 
 from orionx.connector_mt5.gateway import Gateway
 from orionx.core.config import RiskConfig
+from orionx.core.errors import InvalidQuoteError
 from orionx.core.models import Side, Tick, TradeProposal, utcnow
 from orionx.execution.executor import Executor
 from orionx.risk.approval import ApprovalSigner
@@ -31,8 +32,11 @@ TEST_RISK_PCT = 0.0025
 async def wait_fresh_tick(gw: Gateway, symbol: str, sleep: Callable[[float], Awaitable[None]], timeout: float = 20.0) -> Tick | None:
     waited = 0.0
     while waited <= timeout:
-        tick = await gw.get_tick(symbol)
-        if (utcnow() - tick.observed_at) < timedelta(seconds=2):
+        try:
+            tick = await gw.get_tick(symbol)
+        except InvalidQuoteError:  # cotation croisée : on attend la suivante
+            tick = None
+        if tick is not None and (utcnow() - tick.observed_at) < timedelta(seconds=2):
             return tick
         await sleep(0.5)
         waited += 0.5

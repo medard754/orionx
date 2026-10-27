@@ -16,7 +16,7 @@ from datetime import UTC, datetime, timedelta
 from functools import partial
 from typing import Any, TypeVar
 
-from orionx.core.errors import GatewayError
+from orionx.core.errors import GatewayError, InvalidQuoteError
 from orionx.core.models import ORIONX_MAGIC, AccountState, Bar, OrderResult, Position, Side, SymbolSpec, Tick, utcnow
 
 T = TypeVar("T")
@@ -139,6 +139,8 @@ class Mt5Gateway:
             t = self._mt5.symbol_info_tick(symbol)
             if t is None:
                 raise GatewayError(f"Aucun tick pour {symbol}")
+            if not 0 < t.bid <= t.ask:  # cotation croisée (compte sans spread) : ni prix, ni preuve de fraîcheur
+                raise InvalidQuoteError(f"cotation incohérente {symbol} : bid {t.bid}, ask {t.ask}")
             # t.time est en heure SERVEUR du courtier (ex. UTC+3) : inutilisable pour mesurer l'âge.
             # On mesure donc depuis l'heure LOCALE à laquelle on a vu ce prix changer (indépendant du fuseau).
             msc = int(getattr(t, "time_msc", 0) or t.time * 1000)

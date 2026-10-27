@@ -30,7 +30,7 @@ from orionx.audit.log import AuditLog, attach
 from orionx.connector_mt5.gateway import Gateway
 from orionx.core.bus import EventBus
 from orionx.core.config import AppConfig
-from orionx.core.errors import AccountChangedError, GatewayError, OrionxError
+from orionx.core.errors import AccountChangedError, GatewayError, InvalidQuoteError, OrionxError
 from orionx.core.events import (
     CircuitBreakerTripped,
     DecisionNote,
@@ -354,7 +354,11 @@ class Agent:
         proposal = self.pending.pop(proposal_id, None)
         if proposal is None:
             return OrderResult.fail("Proposition inconnue ou déjà traitée")
-        tick = await self.gw.get_tick(proposal.symbol)
+        try:
+            tick = await self.gw.get_tick(proposal.symbol)
+        except InvalidQuoteError as exc:
+            self.pending[proposal_id] = proposal  # non consommée : l'utilisateur peut réessayer
+            return OrderResult.fail(f"{exc} : réessayez dans un instant")
         acc, positions = await self.gw.get_account(), await self.gw.get_positions()
         decision = self.risk.evaluate(proposal, tick, acc, positions, self.specs)
         if not decision.approved or decision.order is None:
