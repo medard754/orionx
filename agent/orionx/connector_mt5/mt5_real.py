@@ -9,6 +9,7 @@ Règle d'or : MT5 n'est pas thread-safe. Tous les appels passent par UN SEUL thr
 from __future__ import annotations
 
 import asyncio
+import logging
 from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
 from datetime import UTC, datetime, timedelta
@@ -20,6 +21,8 @@ from orionx.core.models import ORIONX_MAGIC, AccountState, Bar, OrderResult, Pos
 
 T = TypeVar("T")
 MAGIC = ORIONX_MAGIC  # identifiant des ordres ORIONX
+RECONNECT_TIMEOUT_MS = 10_000  # une tentative ne doit pas bloquer l'agent plus longtemps
+log = logging.getLogger(__name__)
 
 
 class Mt5Gateway:
@@ -41,7 +44,7 @@ class Mt5Gateway:
         return await loop.run_in_executor(self._pool, partial(fn, *args))
 
     # --- cycle de vie -------------------------------------------------------------
-    def _connect_sync(self) -> None:
+    def _connect_sync(self, timeout_ms: int | None = None) -> None:
         try:
             import MetaTrader5 as mt5  # noqa: PLC0415  (import tardif volontaire)
         except ImportError as exc:
@@ -54,6 +57,8 @@ class Mt5Gateway:
             if not self._password or not self._server:
                 raise GatewayError("login fourni sans mot de passe ou sans serveur")
             kwargs = {"login": self._login, "password": self._password, "server": self._server}
+        if timeout_ms is not None:
+            kwargs["timeout"] = timeout_ms
         ok = mt5.initialize(self._path, **kwargs) if self._path else mt5.initialize(**kwargs)
         if not ok:
             code, text = mt5.last_error()
@@ -66,6 +71,20 @@ class Mt5Gateway:
 
     async def connect(self) -> None:
         await self._run(self._connect_sync)
+
+    def _reconnect_sync(self) -> None:
+        if self._mt5 is not None:
+            try:
+                self._mt5.shutdown()
+            except Exception as exc:  # noqa: BLE001 - liaison déjà morte : on rouvre quand même
+                log.warning("shutdown() avant reconnexion a échoué : %s", exc)
+        self._last_seen.clear()  # un prix d'avant la coupure ne doit pas passer pour frais
+        self._connect_sync(timeout_ms=RECONNECT_TIMEOUT_MS)
+        if self._mt5.account_info() is None:
+            raise GatewayError(f"reconnexion : compte illisible {self._mt5.last_error()}")
+
+    async def reconnect(self) -> None:
+        await self._run(self._reconnect_sync)
 
     async def shutdown(self) -> None:
         if self._mt5 is not None:
@@ -85,6 +104,7 @@ class Mt5Gateway:
                 margin_level=info.margin_level or None,
                 currency=info.currency,
                 is_demo=info.trade_mode == self._mt5.ACCOUNT_TRADE_MODE_DEMO,
+                login=int(info.login) if getattr(info, "login", None) else None,
             )
 
         return await self._run(f)

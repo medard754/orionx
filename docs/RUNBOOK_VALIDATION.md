@@ -79,6 +79,17 @@ dans config.yaml, `analysis:` -> `calendar_path: calendar.csv`. Fenêtre B : `ru
 `mean_reversion`, `breakout`, `engine:trend_pullback,breakout`. Aucune stratégie n'a d'avantage démontré : ne rien activer sans le témoin aléatoire.
 **8.8 Week-end (facultatif, un vendredi)** : `positions: weekend_flat: true`, une position démo ouverte, vérifier la fermeture vers 20h30 UTC.
 
+## 9. Reconnexion et changement de compte (T-13)
+**9.1 Coupure du terminal** : `run --config config.yaml` en signaux seuls, compte démo. Fermer MetaTrader 5 (pas l'agent), attendre 1 minute,
+le relancer et laisser le compte se reconnecter. Attendu dans `audit-tail` : `CycleError`, `CircuitBreakerTripped` (GATEWAY_ERRORS),
+`GatewayReconnectFailed` (une ligne à la 1re tentative, puis une sur 10), puis `GatewayReconnected` (avec `down_seconds`), enfin
+`GatewayRecovered` 30 cycles plus tard. Aucune entrée n'est possible tant que le mode sûr dure. Vérifier que les positions ouvertes
+n'ont pas été touchées.
+**9.2 Terminal rouvert sur un autre compte** : même procédure, mais se connecter à un AUTRE compte démo avant que l'agent se reconnecte.
+Attendu : `AccountChanged`, `CircuitBreakerTripped` (ACCOUNT_CHANGED), l'agent s'arrête avec le message « ARRÊT DÉFINITIF » (code de
+sortie 4), et il n'a lu ni modifié aucune position du nouveau compte.
+**9.3 Ne JAMAIS tester avec un compte réel** : le contrôle protège justement de ce cas, ne le provoquez pas.
+
 ## 7. NE PAS FAIRE avant validation complète
 Activer `autonomy: auto` + `--allow-auto`. Cette étape ne vient qu'après : étapes 1 à 6 OK, une semaine de
 fonctionnement en signaux seuls, revue de code des modules `risk/`, `execution/`, `monitoring/` par les deux
@@ -86,4 +97,4 @@ développeurs, puis un test automatique sur démo à 0,01 lot (réduire `risk_pe
 
 ## Non validé sur MT5 à ce jour
 Trailing et sortie partielle (validés sur simulateur seulement : il faudrait +20 pips de gain), reconnexion
-après coupure du terminal, comportement des modes de remplissage selon le courtier.
+après coupure du terminal (§9, codée et testée sur simulateur), comportement des modes de remplissage selon le courtier.

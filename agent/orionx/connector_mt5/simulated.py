@@ -46,6 +46,10 @@ class SimulatedGateway:
         self.timeout_but_executed = False  # l'ordre est exécuté mais la réponse est un délai dépassé
         self.slippage_points = 0.0  # glissement défavorable appliqué aux exécutions
         self.next_magic: int | None = None  # pour simuler une position ouverte à la main
+        self.connected = True  # False : tout appel échoue, comme un terminal fermé
+        self.reconnect_failures = 0  # nombre de tentatives de reconnexion qui échouent avant de réussir
+        self.reconnect_calls = 0
+        self.login: int | None = 1001  # numéro du compte exposé par get_account
 
     # --- pilotage du simulateur -------------------------------------------------
     def set_tick(self, symbol: str, bid: float, ask: float, time: datetime) -> None:
@@ -62,7 +66,22 @@ class SimulatedGateway:
     async def shutdown(self) -> None:
         return None
 
+    def disconnect(self) -> None:
+        self.connected = False
+
+    async def reconnect(self) -> None:
+        self.reconnect_calls += 1
+        if self.reconnect_failures > 0:
+            self.reconnect_failures -= 1
+            raise GatewayError("reconnexion impossible (simulé)")
+        self.connected = True
+
+    def _require(self) -> None:
+        if not self.connected:
+            raise GatewayError("terminal déconnecté (simulé)")
+
     async def get_account(self) -> AccountState:
+        self._require()
         unrealized = sum(self._pnl(p) for p in self._positions.values())
         equity = self._balance + unrealized
         return AccountState(
@@ -72,24 +91,29 @@ class SimulatedGateway:
             margin_level=None if not self._positions else 1000.0,
             currency="USD",
             is_demo=self._is_demo,
+            login=self.login,
         )
 
     async def get_symbol_spec(self, symbol: str) -> SymbolSpec:
+        self._require()
         try:
             return self._specs[symbol]
         except KeyError as exc:
             raise GatewayError(f"Symbole inconnu : {symbol}") from exc
 
     async def get_tick(self, symbol: str) -> Tick:
+        self._require()
         try:
             return self._ticks[symbol]
         except KeyError as exc:
             raise GatewayError(f"Aucun tick pour {symbol}") from exc
 
     async def get_bars(self, symbol: str, timeframe: str, count: int) -> list[Bar]:
+        self._require()
         return self._bars.get((symbol, timeframe), [])[-count:]
 
     async def get_positions(self) -> list[Position]:
+        self._require()
         return [self._with_profit(p) for p in self._positions.values()]
 
     async def send_market_order(
@@ -102,6 +126,7 @@ class SimulatedGateway:
         max_slippage_points: int,
         comment: str,
     ) -> OrderResult:
+        self._require()
         self.orders_sent += 1
         if self.fail_codes:
             return OrderResult.fail("Rejet (simulé)", retcode=self.fail_codes.pop(0))
@@ -133,6 +158,7 @@ class SimulatedGateway:
         return OrderResult(ok=True, ticket=ticket, price=price, retcode=10009)
 
     async def modify_position(self, ticket: int, sl: float, tp: float) -> OrderResult:
+        self._require()
         pos = self._positions.get(ticket)
         if pos is None:
             return OrderResult.fail("Position introuvable")
@@ -142,6 +168,7 @@ class SimulatedGateway:
         return OrderResult(ok=True, ticket=ticket, retcode=10009)
 
     async def close_position(self, ticket: int, volume: float | None = None) -> OrderResult:
+        self._require()
         pos = self._positions.get(ticket)
         if pos is None:
             return OrderResult.fail("Position introuvable")
