@@ -63,6 +63,10 @@ eab58595a3e3  agent/orionx/core/config.py
 `runner.py` et `config.py` ont changé depuis H-1 (`f81bee66b662`, `effef29fabeb`) à cause du chantier T-10 (types et style, aucune
 logique). **Vérification** : avant H-2, H-1 est relancé et ses résultats doivent être identiques au chiffre près (§9.1). Sinon, H-2 ne démarre pas.
 
+**Configuration** : `AppConfig()` par défaut (régimes, volatilité, séances, moteur de décision), codée dans `agent/orionx/backtest/h2.py`.
+Jamais `config.yaml` : un résultat ne doit pas dépendre d'un fichier local. (Précisé le 28 oct., avant toute exécution de H-2.)
+L'exécution se fait par `python -m orionx.main backtest --h2` ; elle refuse de calculer si l'empreinte des données diffère (§2).
+
 Coûts et paramètres de backtest : identiques à H-1 (spread 10 points, commission 7 $/lot, risque 0,5 %, rapport rendement/risque minimal
 1,5, capital 10 000 $, pas de swap), tirages aléatoires avec les graines 0 à 39.
 
