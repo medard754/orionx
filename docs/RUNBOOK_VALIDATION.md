@@ -66,7 +66,7 @@ en attente annulée, config active conservée ; « immediate » seulement si pru
 Attendu : « Stratégies activées », `AgentStarted` avec `strategies`, journal « INTÈGRE ».
 **8.3 Qualité d'exécution** : `demo-trade --hold 20`. Attendu : une ligne « Qualité d'exécution : N tentative(s), latence X ms,
 glissement Y point(s) ». Noter X et Y : ils servent à régler `max_slippage_points`.
-**8.4 Exposition par devise (simulation, aucun ordre)** : dans config.yaml, `risk:` -> `max_total_open_risk_pct: 4.0` et
+**8.4 Exposition par devise (simulation, aucun ordre)** : dans config.yaml, `risk:` -> `max_total_open_risk_pct: 2.0` (pas 4.0 : une hausse met toute la config en attente 24 h) et
 `max_currency_exposure_pct: 1.0`. Dans MT5, ouvrir à la main un ACHAT GBPUSD de 6 lots avec un stop-loss à 20 pips sous
 l'entrée (risque d'environ 1,2 % : le compte démo est à 100 000 $). Puis :
 `risk-check --symbol EURUSD --side buy --config config.yaml` -> attendu REFUSÉ `CURRENCY_EXPOSURE` (déjà short USD) ;
