@@ -26,6 +26,8 @@ from fastapi.responses import FileResponse, PlainTextResponse, RedirectResponse,
 from pydantic import BaseModel, Field
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 
+from orionx.analysis.snapshot import REGIME_LABELS, SESSION_LABELS
+from orionx.api.explain import explain_signal
 from orionx.api.feed import EventFeed
 from orionx.monitoring.flag import write_kill_flag
 
@@ -98,6 +100,8 @@ class SignalOut(BaseModel):
     rationale: list[str]
     valid_until: datetime
     expired: bool
+    preview: dict[str, Any] = {}
+    explain: list[str] = []
 
 
 class DecisionOut(BaseModel):
@@ -213,9 +217,17 @@ def create_app(agent: Agent, token: str, kill_flag: Path, feed: EventFeed | None
     @app.get("/api/signals", dependencies=auth)
     async def list_signals() -> list[SignalOut]:
         now = agent.now()
-        return [SignalOut(id=p.id, symbol=p.symbol, side=p.side.value, sl=p.sl, tp=p.tp, confidence=p.confidence, strategy=p.strategy,
-                          rationale=list(p.rationale), valid_until=p.valid_until, expired=p.valid_until <= now)
-                for p in agent.pending.values()]  # fmt: skip
+        out = []
+        for p in agent.pending.values():
+            state, preview = agent.states.get(p.symbol), agent.preview_signal(p)
+            out.append(SignalOut(
+                id=p.id, symbol=p.symbol, side=p.side.value, sl=p.sl, tp=p.tp, confidence=p.confidence, strategy=p.strategy,
+                rationale=list(p.rationale), valid_until=p.valid_until, expired=p.valid_until <= now, preview=preview,
+                explain=explain_signal(side=p.side.value, symbol=p.symbol, strategy=p.strategy, rationale=p.rationale,
+                                       regime_label=REGIME_LABELS.get(state.regime.value) if state else None,
+                                       session_label=SESSION_LABELS.get(state.session.value) if state else None,
+                                       sl=p.sl, tp=p.tp, preview=preview)))  # fmt: skip
+        return out
 
     @app.get("/api/analysis", dependencies=auth)
     async def analysis() -> list[dict[str, Any]]:

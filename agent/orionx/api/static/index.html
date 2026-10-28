@@ -16,6 +16,9 @@
       <span id="mode" class="pill">…</span>
       <span id="health" class="pill"><span class="dot" aria-hidden="true"></span><span class="label">connexion…</span></span>
     </div>
+    <button type="button" id="beginner" class="switch" role="switch" aria-checked="true" title="Explications en langage simple, montants en jeu et glossaire">
+      <span class="knob" aria-hidden="true"></span><span class="switch-label">Mode débutant</span>
+    </button>
     <span id="updated" class="updated"></span>
   </header>
   <div class="glowline" aria-hidden="true"></div>
@@ -28,27 +31,32 @@
         <h2>Équité</h2>
         <p class="value" id="equity">—</p>
         <p class="sub" id="equity-delta">historique de la session</p>
+        <p class="help">Ce que vaut votre compte à cet instant si toutes les positions étaient fermées maintenant.</p>
         <svg id="spark" class="spark" viewBox="0 0 300 60" preserveAspectRatio="none" role="img" aria-label="Évolution de l'équité pendant la session"></svg>
       </article>
       <article class="tile">
         <h2>Solde</h2>
         <p class="value" id="balance">—</p>
         <p class="sub">positions fermées</p>
+        <p class="help">L'argent du compte sans compter les positions encore ouvertes.</p>
       </article>
       <article class="tile">
         <h2>Résultat latent</h2>
         <p class="value" id="pnl">—</p>
         <p class="sub">positions ouvertes</p>
+        <p class="help">Gain ou perte « sur le papier » des positions ouvertes : il n'est réel qu'à leur fermeture.</p>
       </article>
       <article class="tile">
         <h2>Positions</h2>
         <p class="value" id="npos">—</p>
         <p class="sub" id="nsig">— signal en attente</p>
+        <p class="help">Un signal est une proposition de trade de l'agent : rien ne part sans votre approbation.</p>
       </article>
       <article class="tile">
         <h2>Compte</h2>
         <p class="value" id="account">—</p>
         <p class="sub"><span id="cycles">—</span> cycles</p>
+        <p class="help">« Démo » : l'argent est fictif. ORIONX refuse de travailler sur un compte réel.</p>
       </article>
     </section>
 
@@ -108,6 +116,7 @@
           <tbody id="positions"><tr><td colspan="8" class="empty">Aucune position.</td></tr></tbody>
         </table>
       </div>
+      <p class="help block">Stop : le prix où la position se ferme toute seule pour limiter la perte. Objectif : le prix où elle se ferme pour encaisser le gain visé. Résultat : gain ou perte actuel, pas encore encaissé.</p>
     </section>
 
     <section class="card span-4" aria-labelledby="t-events">
