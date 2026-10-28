@@ -68,6 +68,8 @@ Dernière mise à jour : 27 oct. 2026 · Phase : validation M3 à M7 sur MT5 dé
   journal d'audit, `signals_only` refusé, 3 tickets au plus, expiration 10 min). L'agent n'a pas d'avis sur la direction. Démo uniquement ;
   chemin vers un usage réel prudent (docs/validation, RUNBOOK §13).
 
+- [x] **Site : trois langues, cœur 3D, captures à jour** (28 oct. 2026) : sélecteur FR / EN / ES sur les 5 pages (français = source, traductions dans `site/assets/i18n/`, vérifiées par tests), section animée « cœur d'ORIONX » (réseau neuronal 3D et périmètre de risque, canvas sans bibliothèque), galerie de trois captures du dashboard et aperçus principaux refaits (analyse, ticket guidé, signaux expliqués). Texte de l'offre Pro corrigé : copilote de risque, exécution automatique verrouillée.
+
 ## À faire (ordre recommandé)
 
 | ID | Tâche | Preuve que c'est fini |

@@ -207,7 +207,7 @@ function explainRow(s) {
   if (pv.would_approve && pv.risk_cash !== null && pv.risk_cash !== undefined) {
     stake.append(
       stakeBox("Vous risquez au maximum", cash(pv.risk_cash, pv.currency), `${fmt(pv.risk_pct, 3)} % du capital, si le stop-loss est touché`, "loss"),
-      stakeBox("Vous pouvez gagner", cash(pv.reward_cash, pv.currency), `si l'objectif est atteint · ${fmt(pv.rr, 1)} pour 1`, "gain"),
+      stakeBox("Gain visé", cash(pv.reward_cash, pv.currency), `seulement si l'objectif est atteint (le stop peut l'être avant) · ${fmt(pv.rr, 1)} pour 1`, "gain"),
       stakeBox("Taille de la position", `${pv.volume} lot`, "calculée par le gestionnaire de risques"),
       el("div", "Le gestionnaire de risques accepterait ce trade maintenant.", "verdict yes"));
   } else {
