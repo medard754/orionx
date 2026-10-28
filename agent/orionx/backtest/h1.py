@@ -9,7 +9,7 @@ from __future__ import annotations
 import csv
 import json
 from collections import defaultdict
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Collection, Sequence
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -81,16 +81,17 @@ class FilterReport:
     verdict: Verdict
 
 
-def judge_dev(total: BacktestResult, folds: Sequence[BacktestResult], ref: RandomReference) -> Verdict:
-    """§5 du protocole : TOUS les critères sont requis, aucune tolérance."""
+def judge_dev(total: BacktestResult, folds: Sequence[BacktestResult], ref: RandomReference,
+              beat_min: float = BEAT_RANDOM_MIN) -> Verdict:  # fmt: skip
+    """§5 du protocole : TOUS les critères sont requis, aucune tolérance. `beat_min` : 95 % pour H-1, 97,5 % pour H-2."""
     good = sum(f.profit_factor > PF_MIN for f in folds)
     return Verdict((
         Criterion("trades", total.trades >= MIN_DEV_TRADES, f"{total.trades} trades (>= {MIN_DEV_TRADES})"),
         Criterion("blocs", len(folds) == N_BLOCKS and good >= BLOCKS_REQUIRED,
                   f"PF > {PF_MIN} dans {good} bloc(s) sur {len(folds)} (>= {BLOCKS_REQUIRED} sur {N_BLOCKS})"),
         Criterion("drawdown", total.max_drawdown_pct < DD_MAX, f"{total.max_drawdown_pct:.1f} % (< {DD_MAX} %)"),
-        Criterion("hasard", ref.runs >= RANDOM_RUNS and ref.share_worse >= BEAT_RANDOM_MIN,
-                  f"meilleur que {ref.share_worse:.0%} de {ref.runs} tirages (>= {BEAT_RANDOM_MIN:.0%} de {RANDOM_RUNS})"),
+        Criterion("hasard", ref.runs >= RANDOM_RUNS and ref.share_worse >= beat_min,
+                  f"meilleur que {ref.share_worse:.1%} de {ref.runs} tirages (>= {beat_min:.1%} de {RANDOM_RUNS})"),
     ))  # fmt: skip
 
 
@@ -104,9 +105,9 @@ def judge_holdout(r: BacktestResult) -> Verdict:
     ))  # fmt: skip
 
 
-def pick_candidate(reports: Sequence[FilterReport]) -> FilterReport | None:
-    """§6 : parmi les hypothèses qui passent, celle qui bat le plus de tirages (puis le plus haut PF). `none` est exclu."""
-    ok = [r for r in reports if r.name != "none" and r.verdict.passed]
+def pick_candidate(reports: Sequence[FilterReport], references: Collection[str] = ("none",)) -> FilterReport | None:
+    """§6 : parmi les hypothèses qui passent, celle qui bat le plus de tirages (puis le plus haut PF). Les références sont exclues."""
+    ok = [r for r in reports if r.name not in references and r.verdict.passed]
     return max(ok, key=lambda r: (r.ref.share_worse, r.total.profit_factor), default=None)
 
 
@@ -115,23 +116,42 @@ def costs_for(name: str) -> BacktestParams:
 
 
 # --- exécution -----------------------------------------------------------------------------------
+@dataclass(frozen=True)
+class Hypothesis:
+    """Une hypothèse d'un protocole : une stratégie (fabrique) et un filtre d'entrée."""
+
+    id: str
+    make: Callable[[], Strategy]
+    filter: str = "none"
+
+
+def run_hypotheses(bars: Sequence[Bar], spec: SymbolSpec, symbol: str, hypotheses: Sequence[Hypothesis], *,
+                   random_runs: int = RANDOM_RUNS, beat_min: float = BEAT_RANDOM_MIN) -> list[FilterReport]:  # fmt: skip
+    """Chaque hypothèse sur les données de DÉVELOPPEMENT uniquement (l'appelant a déjà retiré la réserve)."""
+    reports = []
+    for h in hypotheses:
+        costs = costs_for(h.filter)
+        total = run_backtest(bars, h.make(), spec, symbol, **costs)
+        folds = [run_backtest(part, h.make(), spec, symbol, **costs) for part in split_folds(bars, N_BLOCKS)]
+        ref = random_reference(bars, spec, symbol, total.net_profit, runs=random_runs, **costs)
+        reports.append(FilterReport(h.id, total, folds, ref, judge_dev(total, folds, ref, beat_min)))
+    return reports
+
+
 def run_dev(bars: Sequence[Bar], spec: SymbolSpec, symbol: str, make_strategy: Callable[[], Strategy], *,
             random_runs: int = RANDOM_RUNS, names: Sequence[str] = NAMES) -> list[FilterReport]:  # fmt: skip
-    """Les 5 configurations sur les données de DÉVELOPPEMENT uniquement (l'appelant a déjà retiré la réserve)."""
-    reports = []
-    for name in names:
-        costs = costs_for(name)
-        total = run_backtest(bars, make_strategy(), spec, symbol, **costs)
-        folds = [run_backtest(part, make_strategy(), spec, symbol, **costs) for part in split_folds(bars, N_BLOCKS)]
-        ref = random_reference(bars, spec, symbol, total.net_profit, runs=random_runs, **costs)
-        reports.append(FilterReport(name, total, folds, ref, judge_dev(total, folds, ref)))
-    return reports
+    """H-1 : les 5 configurations (une stratégie, cinq filtres) sur les données de développement."""
+    return run_hypotheses(bars, spec, symbol, [Hypothesis(n, make_strategy, n) for n in names], random_runs=random_runs)
+
+
+def run_holdout_hypothesis(bars: Sequence[Bar], spec: SymbolSpec, symbol: str, h: Hypothesis) -> tuple[BacktestResult, Verdict]:
+    r = run_backtest(bars, h.make(), spec, symbol, **costs_for(h.filter))
+    return r, judge_holdout(r)
 
 
 def run_holdout(bars: Sequence[Bar], spec: SymbolSpec, symbol: str, make_strategy: Callable[[], Strategy],
                 name: str) -> tuple[BacktestResult, Verdict]:  # fmt: skip
-    r = run_backtest(bars, make_strategy(), spec, symbol, **costs_for(name))
-    return r, judge_holdout(r)
+    return run_holdout_hypothesis(bars, spec, symbol, Hypothesis(name, make_strategy, name))
 
 
 class HoldoutAlreadyOpened(Exception):

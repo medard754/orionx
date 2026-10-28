@@ -1,0 +1,43 @@
+Instantané h1_EURUSD_H1.csv sha256=88180049abbeb362 : 30000 bougies (2021-12-29 -> 2026-10-27)
+Développement : 26855 bougies (2021-12-29 -> 2026-04-27) · réserve : 3145 bougies (2026-04-27 -> 2026-10-27), NON évaluée ici
+
+=== H-2a (hypothèse) ===
+ développement trades= 140  gagnants= 32%  PF= 0.94  net=  -263.94  DD= 11.6 %
+  bloc 1       trades=  31  gagnants= 23%  PF= 0.61  net=  -457.20  DD=  6.7 %
+  bloc 2       trades=  34  gagnants= 35%  PF= 1.12  net=  +132.02  DD=  4.3 %
+  bloc 3       trades=  40  gagnants= 28%  PF= 0.71  net=  -423.97  DD=  7.1 %
+  bloc 4       trades=  33  gagnants= 45%  PF= 1.66  net=  +604.52  DD=  1.5 %
+   [OK] trades: 140 trades (>= 100)
+   [ÉCHEC] blocs: PF > 1.2 dans 1 bloc(s) sur 4 (>= 3 sur 4)
+   [ÉCHEC] drawdown: 11.6 % (< 10.0 %)
+   [OK] hasard: meilleur que 97.5% de 40 tirages (>= 97.5% de 40)
+
+=== H-2b (hypothèse) ===
+ développement trades=1006  gagnants= 32%  PF= 0.89  net= -3222.05  DD= 35.5 %
+  bloc 1       trades= 262  gagnants= 30%  PF= 0.81  net= -1701.53  DD= 18.5 %
+  bloc 2       trades= 257  gagnants= 34%  PF= 0.98  net=  -187.06  DD= 11.8 %
+  bloc 3       trades= 243  gagnants= 34%  PF= 0.94  net=  -455.66  DD= 11.7 %
+  bloc 4       trades= 224  gagnants= 33%  PF= 0.88  net=  -866.46  DD= 13.0 %
+   [OK] trades: 1006 trades (>= 100)
+   [ÉCHEC] blocs: PF > 1.2 dans 0 bloc(s) sur 4 (>= 3 sur 4)
+   [ÉCHEC] drawdown: 35.5 % (< 10.0 %)
+   [ÉCHEC] hasard: meilleur que 32.5% de 40 tirages (>= 97.5% de 40)
+
+=== H-2c (hypothèse) ===
+ développement trades=1125  gagnants= 33%  PF= 0.92  net= -2502.66  DD= 35.4 %
+  bloc 1       trades= 289  gagnants= 30%  PF= 0.82  net= -1809.74  DD= 22.0 %
+  bloc 2       trades= 280  gagnants= 35%  PF= 1.03  net=  +304.25  DD= 11.1 %
+  bloc 3       trades= 269  gagnants= 35%  PF= 0.98  net=  -160.40  DD= 10.5 %
+  bloc 4       trades= 266  gagnants= 33%  PF= 0.92  net=  -651.39  DD= 16.0 %
+   [OK] trades: 1125 trades (>= 100)
+   [ÉCHEC] blocs: PF > 1.2 dans 0 bloc(s) sur 4 (>= 3 sur 4)
+   [ÉCHEC] drawdown: 35.4 % (< 10.0 %)
+   [ÉCHEC] hasard: meilleur que 62.5% de 40 tirages (>= 97.5% de 40)
+
+RÉSUMÉ DÉVELOPPEMENT
+filtre      trades     PF        net   DD %  bat le hasard  critères
+H-2a           140   0.94       -264   11.6         97.5%  échec
+H-2b          1006   0.89      -3222   35.5         32.5%  échec
+H-2c          1125   0.92      -2503   35.4         62.5%  échec
+
+Aucune hypothèse ne passe tous les critères : la réserve reste FERMÉE. Décision : NO-GO.
