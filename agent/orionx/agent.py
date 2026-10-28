@@ -21,6 +21,7 @@ from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from pathlib import Path
 
+from orionx.alerts.router import AlertRouter, attach_alerts
 from orionx.analysis.calendar import EconomicCalendar
 from orionx.analysis.state import MarketState, Regime, analyze, session_of
 from orionx.analysis.thesis import ThesisMonitor
@@ -29,7 +30,7 @@ from orionx.audit.log import AuditLog, attach
 from orionx.connector_mt5.gateway import Gateway
 from orionx.core.bus import EventBus
 from orionx.core.config import AppConfig
-from orionx.core.errors import AccountChangedError, GatewayError, OrionxError
+from orionx.core.errors import AccountChangedError, GatewayError, InvalidQuoteError, OrionxError
 from orionx.core.events import (
     CircuitBreakerTripped,
     DecisionNote,
@@ -83,6 +84,7 @@ class Agent:
         autonomy: str | None = None,
         allow_auto: bool = False,
         kill_flag: str | Path | None = None,
+        alerts: AlertRouter | None = None,
         clock: Callable[[], datetime] = utcnow,
     ) -> None:
         self.gw, self.cfg, self._audit, self._flag = gateway, cfg, audit, kill_flag
@@ -93,6 +95,9 @@ class Agent:
         self.bus = EventBus()
         if audit:
             attach(self.bus, audit)
+        self._alerts = alerts
+        if alerts:
+            attach_alerts(self.bus, alerts)
         self._clock, self.calendar = clock, calendar
         self.states: dict[str, MarketState] = {}
         self._state_bar: dict[str, datetime] = {}
@@ -191,6 +196,8 @@ class Agent:
     def _log(self, kind: str, payload: object = None) -> None:
         if self._audit:
             self._audit.append(kind, payload)
+        if self._alerts:  # ne lève jamais, ne bloque jamais (envoi dans un fil dédié)
+            self._alerts.handle(kind, payload)
 
     # --- cycle de vie -----------------------------------------------------------------
     async def start(self) -> None:
@@ -347,7 +354,11 @@ class Agent:
         proposal = self.pending.pop(proposal_id, None)
         if proposal is None:
             return OrderResult.fail("Proposition inconnue ou déjà traitée")
-        tick = await self.gw.get_tick(proposal.symbol)
+        try:
+            tick = await self.gw.get_tick(proposal.symbol)
+        except InvalidQuoteError as exc:
+            self.pending[proposal_id] = proposal  # non consommée : l'utilisateur peut réessayer
+            return OrderResult.fail(f"{exc} : réessayez dans un instant")
         acc, positions = await self.gw.get_account(), await self.gw.get_positions()
         decision = self.risk.evaluate(proposal, tick, acc, positions, self.specs)
         if not decision.approved or decision.order is None:

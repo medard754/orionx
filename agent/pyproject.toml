@@ -12,6 +12,7 @@ dependencies = ["PyYAML>=6.0"]
 [project.optional-dependencies]
 dev = ["pytest>=8", "hypothesis>=6", "ruff~=0.17.0", "mypy~=2.4", "types-PyYAML"]  # outils bloquants en CI : versions bornées
 mt5 = ["MetaTrader5; sys_platform == 'win32'"]
+alerts = ["keyring>=25"]  # coffre Windows pour le jeton Telegram (facultatif)
 
 [tool.setuptools.packages.find]
 include = ["orionx*"]
@@ -34,5 +35,5 @@ strict = true
 files = ["orionx"]
 
 [[tool.mypy.overrides]]
-module = ["MetaTrader5", "MetaTrader5.*"]  # pas de stubs, et absent de la CI Linux
+module = ["MetaTrader5", "MetaTrader5.*", "keyring", "keyring.*"]  # facultatifs : absents de la CI Linux
 ignore_missing_imports = true

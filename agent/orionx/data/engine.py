@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import sqlite3
 from collections.abc import Callable, Sequence
 from datetime import UTC, datetime
@@ -9,8 +10,11 @@ from pathlib import Path
 
 from orionx.connector_mt5.gateway import Gateway
 from orionx.core.bus import EventBus
+from orionx.core.errors import InvalidQuoteError
 from orionx.core.events import BarClosed, DataRecovered, DataStale, TickReceived
 from orionx.core.models import Bar, Tick, utcnow
+
+log = logging.getLogger(__name__)
 
 TF_MINUTES = {"M1": 1, "M5": 5, "M15": 15, "M30": 30, "H1": 60, "H4": 240, "D1": 1440}
 
@@ -88,6 +92,7 @@ class MarketData:
         self._builders = {s: {tf: BarBuilder(tf) for tf in timeframes} for s in self._symbols}
         self.last: dict[str, Tick] = {}
         self._stale: set[str] = set()
+        self._invalid: set[str] = set()  # symboles dont la dernière cotation lue était incohérente
         self.confirmed: set[str] = set()  # symboles dont on a vu le prix CHANGER au moins une fois (flux réellement vivant)
 
     def watch(self, symbol: str) -> None:
@@ -100,9 +105,19 @@ class MarketData:
         """Un passage : lit les prix, publie ce qui a changé, signale les flux gelés."""
         changed: list[Tick] = []
         for sym in self._symbols:
-            tick = await self._gw.get_tick(sym)
             prev = self.last.get(sym)
-            if prev is None or (tick.bid, tick.ask, tick.time) != (prev.bid, prev.ask, prev.time):
+            try:
+                tick = await self._gw.get_tick(sym)
+            except InvalidQuoteError as exc:  # on garde le dernier prix valide, qui vieillit : le mode sûr prendra le relais
+                if sym not in self._invalid:
+                    log.warning("%s : on attend une cotation valide", exc)
+                self._invalid.add(sym)
+                if prev is None:
+                    continue
+                tick = prev
+            else:
+                self._invalid.discard(sym)
+            if (tick.bid, tick.ask, tick.time) != ((prev.bid, prev.ask, prev.time) if prev else None):
                 if prev is not None:
                     self.confirmed.add(sym)
                 self.last[sym] = tick

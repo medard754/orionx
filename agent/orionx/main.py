@@ -13,6 +13,8 @@
   python -m orionx.main risk-status       # configuration de risque active / en attente
   python -m orionx.main risk-check --symbol EURUSD --side buy   # que déciderait le risque ? (aucun ordre)
   python -m orionx.main state             # état du marché (régime, séance, volatilité) et annonces à venir
+  python -m orionx.main alert-setup       # M8 : configure le bot Telegram (jeton dans le coffre Windows)
+  python -m orionx.main alert-test        # M8 : envoie un message de test
 """
 
 from __future__ import annotations
@@ -36,6 +38,7 @@ from orionx.risk.approval import ApprovalSigner
 from orionx.risk.manager import RiskManager
 
 if TYPE_CHECKING:
+    from orionx.alerts.router import AlertRouter
     from orionx.connector_mt5.mt5_real import Mt5Gateway
 
 DATA_DIR = Path(os.environ.get("ORIONX_DATA_DIR", "data"))
@@ -158,10 +161,11 @@ async def run_agent(cfg: AppConfig, allow_auto: bool, cycle: float, max_cycles: 
         print(f"Calendrier économique : {len(calendar.events)} événements chargés ({cfg.analysis.calendar_path}).")
     else:
         print("Aucun calendrier économique configuré : pas de blocage autour des annonces (analysis.calendar_path).")
+    alerts = _alert_router(cfg)
     await gw.connect()
     engine = build_engine(cfg.strategies, cfg.decision, cfg.analysis)
     agent = Agent(gw, cfg, engine=engine, risk_guard=RiskParamGuard(DATA_DIR), audit=audit, store=MarketStore(DATA_DIR / "market.db"),
-                  calendar=calendar, allow_auto=allow_auto, kill_flag=KILL_FLAG)  # fmt: skip
+                  calendar=calendar, allow_auto=allow_auto, kill_flag=KILL_FLAG, alerts=alerts)  # fmt: skip
     print(f"Stratégies activées : {list(cfg.strategies)} · profil de risque actif : {agent.risk.cfg.risk_per_trade_pct} % par trade.")
     print(f"Agent démarré : autonomie={agent.autonomy}, symboles={cfg.symbols}. Ctrl+C pour arrêter.")
     print("Les positions ouvertes restent protégées par leur stop-loss même si l'agent s'arrête.")
@@ -169,10 +173,85 @@ async def run_agent(cfg: AppConfig, allow_auto: bool, cycle: float, max_cycles: 
         await agent.run(asyncio.Event(), cycle_seconds=cycle, max_cycles=max_cycles)
     finally:
         await gw.shutdown()
+        if alerts:
+            alerts.close()  # laisse partir les dernières alertes (au plus 30 s, réseau lent)
         print("Agent arrêté.")
     if agent.aborted:
         print(f"ARRÊT DÉFINITIF : {agent.aborted}. Vérifiez le compte du terminal MT5, puis relancez l'agent.")
         return 4
+    return 0
+
+
+def _alert_router(cfg: AppConfig) -> AlertRouter | None:
+    from orionx.alerts.router import AlertRouter
+    from orionx.alerts.telegram import TelegramNotifier, load_credentials
+
+    creds = load_credentials()
+    if creds is None:
+        print("Alertes Telegram : désactivées (aucun identifiant ; voir « alert-setup »).")
+        return None
+    signals = "oui" if cfg.alerts.signals else "non"
+    print(f"Alertes Telegram : activées (niveau minimal {cfg.alerts.min_level}, signaux : {signals}).")
+    return AlertRouter(TelegramNotifier(*creds), cfg.alerts)
+
+
+def alert_cmd(command: str, visible: bool = False) -> int:
+    import getpass
+
+    from orionx.alerts.telegram import (
+        AlertError,
+        TelegramNotifier,
+        check_token,
+        clean_token,
+        keyring_module,
+        load_credentials,
+        store_credentials,
+    )
+
+    if command == "alert-test":
+        creds = load_credentials()
+        if creds is None:
+            print("Aucun identifiant Telegram : lancez d'abord « alert-setup ».")
+            return 2
+        try:
+            TelegramNotifier(*creds).send("✅ ORIONX : test d'alerte réussi. Les alertes de l'agent arriveront ici.")
+        except AlertError as exc:
+            print(f"Échec : {exc}")
+            return 3
+        print("Message de test envoyé : vérifiez Telegram.")
+        return 0
+    if keyring_module() is None:  # vérifié AVANT la saisie : ne jamais faire taper un jeton pour rien
+        print("Coffre Windows indisponible. Installez-le d'abord, puis relancez « alert-setup » :")
+        print('  pip install -e ".[alerts]"')
+        return 2
+    print("1. Dans Telegram, ouvrez @BotFather, envoyez /newbot et suivez les étapes : il vous donne un JETON.")
+    print("2. Ouvrez la conversation avec votre nouveau bot et envoyez-lui /start.")
+    if visible:  # le collage dans une saisie invisible échoue souvent sous Windows ; rien n'est enregistré en clair
+        raw = input("3. Collez le jeton (il s'affiche à l'écran, effacez-le ensuite avec cls) : ")
+    else:
+        raw = getpass.getpass("3. Collez le jeton (la saisie reste invisible ; clic droit pour coller) : ")
+    token, note = clean_token(raw)  # espaces, guillemets, jeton collé deux fois
+    if note:
+        print(note)
+    if not token:
+        print("Annulé.")
+        return 2
+    problem = check_token(token)
+    if problem:
+        print(problem)
+        print("Autre méthode : python -m orionx.main alert-setup --visible")
+        return 3
+    try:
+        chat = TelegramNotifier(token, "").discover_chat_id()
+        if chat is None:
+            print("Aucun message trouvé : envoyez /start à votre bot, puis relancez « alert-setup ».")
+            return 3
+        store_credentials(token, chat)
+        TelegramNotifier(token, chat).send("✅ ORIONX : bot configuré. Les alertes de l'agent arriveront ici.")
+    except AlertError as exc:
+        print(f"Échec : {exc}")
+        return 3
+    print("Identifiants enregistrés dans le coffre Windows (jamais dans le dépôt). Message de test envoyé.")
     return 0
 
 
@@ -449,7 +528,7 @@ async def h1_cmd(symbol: str, open_holdout: str | None, cfg: AppConfig) -> int:
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="orionx")
     commands = ["simulate", "mt5-check", "demo-trade", "run", "kill", "clear-kill", "audit-verify", "audit-tail",
-                "backtest", "state", "risk-set", "risk-status", "risk-check"]  # fmt: skip
+                "backtest", "state", "risk-set", "risk-status", "risk-check", "alert-setup", "alert-test"]  # fmt: skip
     parser.add_argument("command", choices=commands)
     parser.add_argument("--yes", action="store_true", help="demo-trade : ne pas demander confirmation")
     parser.add_argument("--hold", type=float, default=10.0, help="demo-trade : secondes avant fermeture")
@@ -469,6 +548,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--random-runs", type=int, default=20, help="backtest : nombre de tirages du témoin aléatoire")
     parser.add_argument("--csv", type=Path, default=None, help="backtest : exporte les trades en CSV")
     parser.add_argument("--h1", action="store_true", help="backtest : protocole H-1/V-3 (réserve de 6 mois jamais évaluée ici)")
+    parser.add_argument("--visible", action="store_true", help="alert-setup : saisie du jeton visible (si le collage invisible échoue)")
     parser.add_argument("--open-holdout", default=None, metavar="FILTRE",
                         help="backtest --h1 : ouvre la réserve UNE fois, pour le candidat désigné")
     args = parser.parse_args(argv)
@@ -502,6 +582,8 @@ def main(argv: list[str] | None = None) -> int:
         if args.h1:
             return asyncio.run(h1_cmd(args.symbol, args.open_holdout, cfg))
         return asyncio.run(backtest_cmd(args.symbol, args.bars, args.folds, args.csv, args.filters, args.random_runs, args.strategy, cfg))
+    if args.command in ("alert-setup", "alert-test"):
+        return alert_cmd(args.command, args.visible)
     if args.command == "demo-trade":
         return asyncio.run(demo_trade(args.yes, args.hold))
     return asyncio.run(mt5_check())

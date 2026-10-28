@@ -152,6 +152,22 @@ class DecisionConfig:
 
 
 @dataclass(frozen=True)
+class AlertsConfig:
+    """Alertes Telegram (M8). Sans identifiants (voir alert-setup), elles sont simplement inactives."""
+
+    min_level: str = "important"  # info | important | critique
+    signals: bool = False  # envoyer aussi chaque signal (utile pendant la semaine de signaux seuls V-4)
+    dedup_seconds: float = 300.0  # une même alerte n'est pas répétée avant ce délai (60 s pour le critique)
+    max_per_minute: int = 20  # au-delà, les alertes non critiques sont écartées et comptées
+
+    def __post_init__(self) -> None:
+        if self.min_level not in {"info", "important", "critique"}:
+            raise ConfigError(f"alerts.min_level invalide : {self.min_level}")
+        if self.dedup_seconds < 0 or self.max_per_minute < 1:
+            raise ConfigError("alerts : dedup_seconds >= 0 et max_per_minute >= 1 requis")
+
+
+@dataclass(frozen=True)
 class AppConfig:
     mode: str = "demo"
     autonomy: str = "semi_auto"
@@ -162,6 +178,7 @@ class AppConfig:
     analysis: AnalysisConfig = field(default_factory=AnalysisConfig)
     positions: PositionsConfig = field(default_factory=PositionsConfig)
     decision: DecisionConfig = field(default_factory=DecisionConfig)
+    alerts: AlertsConfig = field(default_factory=AlertsConfig)
     strategies: tuple[str, ...] = ("trend_pullback",)  # stratégies activées (voir strategies/registry.py)
 
     def __post_init__(self) -> None:
@@ -203,6 +220,7 @@ def load_config(path: str | Path) -> AppConfig:
     risk = _section("risk", lambda: risk_from_profile(profile, **r) if profile else RiskConfig(**r))
     positions = _section("positions", lambda: PositionsConfig(**(raw.pop("positions", None) or {})))
     decision = _section("decision", lambda: DecisionConfig(**(raw.pop("decision", None) or {})))
+    alerts = _section("alerts", lambda: AlertsConfig(**(raw.pop("alerts", None) or {})))
     a = dict(raw.pop("analysis", None) or {})
     if "blocked_sessions" in a:
         a["blocked_sessions"] = tuple(a["blocked_sessions"])
@@ -210,4 +228,5 @@ def load_config(path: str | Path) -> AppConfig:
     for key in ("strategies", "symbols"):
         if key in raw:
             raw[key] = tuple(raw[key])
-    return _section("(racine)", lambda: AppConfig(risk=risk, analysis=analysis, positions=positions, decision=decision, **raw))
+    return _section("(racine)", lambda: AppConfig(risk=risk, analysis=analysis, positions=positions, decision=decision,
+                                                   alerts=alerts, **raw))

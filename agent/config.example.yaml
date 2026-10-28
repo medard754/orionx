@@ -38,6 +38,11 @@ decision:
   consensus_bonus: 0.05
   allow_pyramiding: false        # renforcer seulement une position déjà sans risque
 
+# Alertes Telegram (M8). Identifiants HORS de ce fichier : python -m orionx.main alert-setup
+alerts:
+  min_level: important           # info | important | critique
+  signals: false                 # true pendant la semaine de signaux seuls (V-4)
+
 # Gestion des positions (M7)
 positions:
   breakeven_r: 1.0

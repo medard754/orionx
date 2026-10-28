@@ -90,6 +90,15 @@ Attendu : `AccountChanged`, `CircuitBreakerTripped` (ACCOUNT_CHANGED), l'agent s
 sortie 4), et il n'a lu ni modifié aucune position du nouveau compte.
 **9.3 Ne JAMAIS tester avec un compte réel** : le contrôle protège justement de ce cas, ne le provoquez pas.
 
+## 10. Alertes Telegram (M8)
+**10.1 Mise en service** : `pip install -e ".[alerts]"` (coffre Windows), puis `python -m orionx.main alert-setup` : créer le bot avec
+@BotFather, lui envoyer `/start`, coller le jeton (saisie invisible). Le chat est trouvé automatiquement ; un message de test arrive.
+Variante sans coffre : variables d'environnement `ORIONX_TELEGRAM_TOKEN` et `ORIONX_TELEGRAM_CHAT_ID` (jamais dans config.yaml).
+**10.2 Test** : `alert-test` -> message reçu. Puis `run --config config.yaml` (le démarrage affiche « Alertes Telegram : activées ») ;
+dans une autre fenêtre, `kill --level 1 --yes` -> alerte CRITIQUE « Arrêt d'urgence niveau 1 » sur le téléphone ; `clear-kill` ensuite.
+**10.3 Coupure** : refaire §9.1 -> alertes « Liaison MT5 perdue », « liaison MT5 en erreur », « Liaison MT5 rétablie », « Reprise normale ».
+**10.4 Semaine de signaux seuls (V-4)** : `alerts: signals: true` dans config.yaml pour recevoir chaque signal.
+
 ## 7. NE PAS FAIRE avant validation complète
 Activer `autonomy: auto` + `--allow-auto`. Cette étape ne vient qu'après : étapes 1 à 6 OK, une semaine de
 fonctionnement en signaux seuls, revue de code des modules `risk/`, `execution/`, `monitoring/` par les deux
