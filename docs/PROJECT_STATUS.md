@@ -37,6 +37,10 @@ Dernière mise à jour : 27 oct. 2026 · Phase : validation M3 à M7 sur MT5 dé
   injection de HTML (ADR 0008). **Essayé dans le navigateur le 28 oct.** avec l'agent sur MT5 démo : état, arrêts d'urgence 1 et 3, alertes
   Telegram, cotation croisée gérée -> OK ; flux en direct muet (bibliothèque `websockets` manquante) : corrigé, à revérifier (§12).
 
+- [x] **Site vitrine** (28 oct. 2026), dossier autonome `site/` : produit, abonnement, à propos, contact, se connecter,
+  téléchargement avec maquettes. Sans promesse de gain, avertissement sur les risques sur chaque page, boutons App Store /
+  Windows « bientôt ». **Avant publication** : adresse de contact, mentions légales, avis juridique, marque, tarifs (`site/README.md`).
+
 ## À faire (ordre recommandé)
 
 | ID | Tâche | Preuve que c'est fini |
