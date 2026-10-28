@@ -1,8 +1,9 @@
-# Travailler à deux sur ORIONX
+# Travailler sur ORIONX
 
 ## Flux Git
 
-- `main` est protégée : uniquement par pull request, CI verte, une relecture de l'autre développeur.
+- `main` est protégée : uniquement par pull request, CI verte. Un seul développeur : pour `risk/`, `execution/`,
+  `connector_mt5/` et `core/config.py`, revue `/code-review` puis relecture personnelle au moins 24 h plus tard (ADR 0004).
 - Branches : `feat/T-04-collecte-ticks`, `fix/...`. Une branche = une tâche de `docs/PROJECT_STATUS.md`.
 - Commits courts et clairs (`feat:`, `fix:`, `test:`, `docs:`, `chore:`).
 - Pull requests petites (moins de 400 lignes si possible).

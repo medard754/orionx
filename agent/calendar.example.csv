@@ -1,0 +1,7 @@
+# Calendrier économique tenu à la main. Heures en UTC. impact : low | medium | high
+# datetime_utc,currency,impact,title
+2026-10-15T12:30:00Z,USD,high,Ventes au détail
+2026-10-15T14:00:00Z,USD,medium,Stocks pétrole
+2026-10-22T12:15:00Z,EUR,high,Décision de taux BCE
+2026-10-22T12:45:00Z,EUR,high,Conférence de presse BCE
+2026-11-06T13:30:00Z,USD,high,Emploi non agricole (NFP)

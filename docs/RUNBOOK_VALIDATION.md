@@ -44,6 +44,41 @@ une stratégie n'est envisagée qu'après un walk-forward sur plusieurs période
 Laisser `run` tourner pendant une heure : `data/market.db` doit contenir des bougies M1/M5/H1 fermées.
 Couper le Wi-Fi 20 secondes : un `DataStale` doit apparaître dans le journal, puis `DataRecovered`.
 
+## 6 bis. Analyse de marché (M3 v1)
+1. `copy calendar.example.csv calendar.csv` puis ajouter une annonce qui tombe dans 10 minutes (heure UTC !), et dans
+   `config.yaml` : `analysis:` -> `calendar_path: calendar.csv`.
+2. `python -m orionx.main state --config config.yaml` : doit afficher régime, séance, volatilité, ATR et l'annonce à venir.
+   Comparer le régime avec le graphique H1 : est-ce cohérent à l'oeil ? Séance cohérente avec l'heure UTC actuelle ?
+3. `python -m orionx.main run --config config.yaml` pendant la fenêtre de l'annonce ; `audit-tail` doit montrer
+   `MarketStateUpdated`. Avec une position ouverte (`demo-trade --hold 600`) : `ThesisDegraded` puis un stop resserré.
+4. `python -m orionx.main backtest --bars 15000 --filters none,vol,session,trend,all` (quelques minutes).
+
+## 8. Modules M3 à M7 : ordre de test sur MT5 démo
+Préparer : `copy config.example.yaml config.yaml` (garder l'ancien en sauvegarde), puis `symbols: [EURUSD]` et
+`max_data_age_seconds: 10.0`. Toutes les commandes avec `--config config.yaml`, depuis `agent/`.
+
+**8.1 Profils et verrouillage de 24 h** : `risk-status` ; `risk-set --profile prudent` ; `risk-set --profile dynamic`
+(attendu « delayed », date à +24 h) ; `risk-status` (changement en attente) ; `risk-set --profile prudent` (« immediate »).
+**8.2 Démarrage** : `run --max-cycles 30 --config config.yaml` puis `audit-tail`, `audit-verify`.
+Attendu : « Stratégies activées », `AgentStarted` avec `strategies`, journal « INTÈGRE ».
+**8.3 Qualité d'exécution** : `demo-trade --hold 20`. Attendu : une ligne « Qualité d'exécution : N tentative(s), latence X ms,
+glissement Y point(s) ». Noter X et Y : ils servent à régler `max_slippage_points`.
+**8.4 Exposition par devise (simulation, aucun ordre)** : dans config.yaml, `risk:` -> `max_total_open_risk_pct: 4.0` et
+`max_currency_exposure_pct: 1.0`. Dans MT5, ouvrir à la main un ACHAT GBPUSD de 6 lots avec un stop-loss à 20 pips sous
+l'entrée (risque d'environ 1,2 % : le compte démo est à 100 000 $). Puis :
+`risk-check --symbol EURUSD --side buy --config config.yaml` -> attendu REFUSÉ `CURRENCY_EXPOSURE` (déjà short USD) ;
+`risk-check --symbol EURUSD --side sell --config config.yaml` -> attendu APPROUVÉ (vendre EURUSD = long USD, compense).
+Fermer la position GBPUSD et remettre les valeurs de config.yaml après le test.
+**8.5 Annonce et thèse dégradée** : `copy calendar.example.csv calendar.csv`, puis
+`Add-Content calendar.csv "$((Get-Date).ToUniversalTime().AddMinutes(10).ToString('yyyy-MM-ddTHH:mm:ssZ')),EUR,high,Test BCE"` ;
+dans config.yaml, `analysis:` -> `calendar_path: calendar.csv`. Fenêtre B : `run --config config.yaml`. Fenêtre A :
+`demo-trade --hold 300` (OUI). Attendu dans `audit-tail` : `ThesisDegraded` (raison « annonce imminente ») puis `PositionAdjusted`
+(`THESIS_STOP` si la position est en gain, sinon `THESIS_WATCH`). Retirer ensuite la ligne de test du calendrier.
+**8.6 Mode sûr** : `run --config config.yaml`, couper le Wi-Fi 45 s : `DataFrozen` puis `CircuitBreakerTripped` ; au retour : `DataRestored`.
+**8.7 Backtests** (quelques minutes chacun) : `backtest --bars 15000 --strategy trend_pullback --config config.yaml`, idem avec
+`mean_reversion`, `breakout`, `engine:trend_pullback,breakout`. Aucune stratégie n'a d'avantage démontré : ne rien activer sans le témoin aléatoire.
+**8.8 Week-end (facultatif, un vendredi)** : `positions: weekend_flat: true`, une position démo ouverte, vérifier la fermeture vers 20h30 UTC.
+
 ## 7. NE PAS FAIRE avant validation complète
 Activer `autonomy: auto` + `--allow-auto`. Cette étape ne vient qu'après : étapes 1 à 6 OK, une semaine de
 fonctionnement en signaux seuls, revue de code des modules `risk/`, `execution/`, `monitoring/` par les deux

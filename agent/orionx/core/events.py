@@ -74,3 +74,38 @@ class PositionAdjusted:
     ticket: int
     action: str
     detail: str
+
+
+@dataclass(frozen=True)
+class MarketStateUpdated:
+    symbol: str
+    regime: str
+    session: str
+    volatility_ratio: float
+    trend_strength: float
+    efficiency: float
+    atr: float
+
+
+@dataclass(frozen=True)
+class ThesisDegraded:
+    ticket: int
+    symbol: str
+    reasons: tuple[str, ...]
+
+
+@dataclass(frozen=True)
+class ExecutionQuality:
+    proposal_id: str
+    symbol: str
+    ok: bool
+    attempts: int
+    latency_ms: float
+    slippage_points: float | None
+    note: str
+
+
+@dataclass(frozen=True)
+class DecisionNote:
+    symbol: str
+    notes: tuple[str, ...]

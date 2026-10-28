@@ -1,6 +1,6 @@
-# Remplacer @dev1 / @dev2 par vos identifiants GitHub.
-# Toute modification du risque, de l'exécution ou du connecteur exige la relecture de l'AUTRE développeur.
-/agent/orionx/risk/        @dev1 @dev2
-/agent/orionx/execution/   @dev1 @dev2
-/agent/orionx/connector_mt5/ @dev1 @dev2
-/agent/orionx/core/config.py @dev1 @dev2
+# Un seul développeur (ADR 0004) : ne PAS cocher « Require review from Code Owners » dans la protection de `main`.
+# Toute modification du risque, de l'exécution ou du connecteur exige la revue /code-review + relecture différée de 24 h.
+/agent/orionx/risk/        @medard754
+/agent/orionx/execution/   @medard754
+/agent/orionx/connector_mt5/ @medard754
+/agent/orionx/core/config.py @medard754

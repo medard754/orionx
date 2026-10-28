@@ -10,6 +10,10 @@ from __future__ import annotations
 from collections.abc import Sequence
 from dataclasses import dataclass, field
 
+from orionx.analysis.filters import EntryFilter
+from orionx.analysis.state import analyze
+from orionx.analysis.tzutil import server_to_utc_eet
+from orionx.core.config import AnalysisConfig
 from orionx.core.models import Bar, Side, SymbolSpec, Tick
 from orionx.risk.sizing import position_size
 from orionx.strategies.trend_pullback import Strategy
@@ -34,6 +38,7 @@ class BacktestResult:
     profit_factor: float = 0.0
     max_drawdown_pct: float = 0.0
     final_equity: float = 0.0
+    filtered: int = 0  # signaux écartés par le filtre d'entrée
     log: list[Trade] = field(default_factory=list)
 
     @property
@@ -52,8 +57,12 @@ def run_backtest(
     spread_points: float = 10.0,
     commission_per_lot: float = 0.0,
     min_rr: float = 1.5,
+    entry_filter: EntryFilter | None = None,
+    analysis: AnalysisConfig | None = None,
 ) -> BacktestResult:
     spread = spread_points * spec.point
+    acfg = analysis or AnalysisConfig()
+    state_window = acfg.vol_window + 60
     res, equity, peak, gross_win, gross_loss = BacktestResult(final_equity=balance), balance, balance, 0.0, 0.0
     i, window = strategy.min_bars, strategy.min_bars + 5  # même fenêtre qu'en production (agent.py)
     while i < len(bars) - 1:
@@ -63,6 +72,12 @@ def run_backtest(
         if prop is None:
             i += 1
             continue
+        if entry_filter is not None:  # état du marché calculé UNIQUEMENT avec les bougies déjà fermées
+            state = analyze(symbol, bars[max(0, i + 1 - state_window) : i + 1], acfg, server_to_utc_eet)
+            if not entry_filter(state, prop):
+                res.filtered += 1
+                i += 1
+                continue
         buy = prop.side is Side.BUY
         entry = bars[i + 1].open + (spread if buy else 0.0)
         sl, tp = prop.sl, prop.tp

@@ -5,6 +5,7 @@ from __future__ import annotations
 import statistics
 from collections.abc import Sequence
 from dataclasses import dataclass
+from typing import Any
 
 from orionx.backtest.runner import BacktestResult, run_backtest
 from orionx.core.models import Bar, SymbolSpec
@@ -31,7 +32,7 @@ class RandomReference:
 
 
 def random_reference(bars: Sequence[Bar], spec: SymbolSpec, symbol: str, strategy_net: float, runs: int = 20,
-                     **bt_kwargs: float) -> RandomReference:  # fmt: skip
+                     **bt_kwargs: Any) -> RandomReference:  # fmt: skip
     results: list[BacktestResult] = [
         run_backtest(bars, RandomEntry(seed=s), spec, symbol, **bt_kwargs) for s in range(runs)
     ]

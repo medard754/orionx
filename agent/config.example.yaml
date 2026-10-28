@@ -3,16 +3,50 @@ mode: demo            # seul « demo » est accepté dans cette version
 autonomy: semi_auto   # signals_only | semi_auto | auto
 symbols: [EURUSD, GBPUSD, XAUUSD]
 max_data_age_seconds: 3.0
+stale_halt_seconds: 30.0      # prix figé plus longtemps : mode sûr
 risk:
+  profile: prudent             # prudent | moderate | dynamic ; les lignes ci-dessous affinent le profil
   risk_per_trade_pct: 0.5
   max_daily_loss_pct: 3.0
   max_weekly_loss_pct: 6.0
   max_drawdown_pct: 10.0
   max_open_positions: 3
   max_total_open_risk_pct: 2.0
+  max_currency_exposure_pct: 2.0   # risque NET maximal sur une même devise
   min_rr: 1.5
   max_consecutive_losses: 4
   max_spread_points: 30
   min_margin_level_pct: 300
   max_slippage_points: 10
   approval_ttl_seconds: 5
+
+# Analyse de marché (M3 v1, à base de règles)
+analysis:
+  high_vol_ratio: 1.8          # ATR actuel / ATR médian : au-delà = forte volatilité
+  block_high_vol: true         # refuser les entrées en forte volatilité
+  blocked_sessions: []         # ex. [off, asia]
+  news_before_min: 30
+  news_after_min: 30
+  news_min_impact: high        # low | medium | high
+
+  # calendar_path: calendar.csv  # voir calendar.example.csv
+
+# Moteur de décision (M4)
+strategies: [trend_pullback]   # disponibles : trend_pullback, mean_reversion, breakout (non validées : à tester)
+decision:
+  max_per_currency_direction: 1  # pas deux entrées dans le même sens sur la même devise
+  consensus_bonus: 0.05
+  allow_pyramiding: false        # renforcer seulement une position déjà sans risque
+
+# Gestion des positions (M7)
+positions:
+  breakeven_r: 1.0
+  trail_r: 1.0
+  # trail_atr_mult: 1.5          # stop suiveur à 1,5 ATR au lieu de 1R
+  partial_r: 1.5
+  partial_fraction: 0.5
+  weekend_flat: false            # true : tout clôturer avant la fermeture du vendredi
+  news_action: tighten           # tighten | reduce | close, quand une annonce est imminente
+  manage_foreign: true           # gérer aussi les positions ouvertes à la main
+  # thesis_exit_min_reasons: 2
+  # thesis_reduce_min_reasons: 1

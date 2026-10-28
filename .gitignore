@@ -20,7 +20,8 @@ secrets/
 # Données locales
 *.db
 *.sqlite3
-data/
+/data/
+/agent/data/
 logs/
 
 # Éditeurs / OS
@@ -29,3 +30,8 @@ logs/
 .DS_Store
 Thumbs.db
 node_modules/
+
+# Config locale / calendrier (propres à chaque machine)
+calendar.csv
+config.*.yaml
+!config.example.yaml
