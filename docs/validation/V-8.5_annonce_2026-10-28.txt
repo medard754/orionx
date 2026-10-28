@@ -1,0 +1,20 @@
+=== Ordre démo (demo-trade --yes --hold 75) ===
+Compte : équité=99753.97 USD démo=True
+Prix : bid=1.11322 ask=1.11322
+Approuvé : ACHAT 0.01 lot EURUSD, SL 1.11122, TP 1.11922 (signé)
+Ordre exécuté : ticket 11139890245 au prix 1.11322
+Qualité d'exécution : 1 tentative(s), latence 62 ms, glissement défavorable +0.0 point(s)
+Position visible : EURUSD buy 0.01 lot, SL=1.11122, TP=1.11922
+-> Regardez l'onglet « Trade » de MetaTrader 5 : la position reste ouverte 75 s.
+Position fermée.
+Solde final : 99754.06 USD (écart dû au spread)
+
+=== Journal d'audit de l'essai (agent en signaux seuls, calendrier avec une annonce EUR) ===
+2 2026-10-28T13:10:47.061651+00:00 AgentStarted {'autonomy': 'signals_only', 'equity': 99753.97, 'open_positions': 0, 'risk_startup': "config.yaml plus risqué, déjà en attente jusqu'au 29/10/2026 00:25 UTC", 'strategies': ['trend_pullback_v1'], 'symbols': [
+3 2026-10-28T13:10:47.070167+00:00 DataStale {'age_seconds': 3600.0, 'symbol': 'EURUSD'}
+5 2026-10-28T13:11:02.147253+00:00 ThesisDegraded {'reasons': ['annonce imminente (EUR Test BCE (essai 8.5))'], 'symbol': 'EURUSD', 'ticket': 11139890245}
+6 2026-10-28T13:11:02.214447+00:00 PositionAdjusted {'action': 'THESIS_STOP', 'detail': '1.11122 -> 1.11222 (annonce imminente (EUR Test BCE (essai 8.5)))', 'ticket': 11139890245}
+7 2026-10-28T13:12:16.733649+00:00 PositionClosed {'last_known_profit': 0.09, 'symbol': 'EURUSD', 'ticket': 11139890245}
+8 2026-10-28T13:13:17.126749+00:00 AgentStopped {'cycles': 150, 'note': 'positions ouvertes protégées par leur stop-loss serveur'}
+
+Journal : 8 entrées vérifiées -> INTÈGRE ; positions restantes sur MT5 : 0

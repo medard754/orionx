@@ -1,0 +1,9 @@
+Compte : équité=99753.98 USD démo=True
+Prix : bid=1.11151 ask=1.11172
+Approuvé : ACHAT 0.01 lot EURUSD, SL 1.10972, TP 1.11772 (signé)
+Ordre exécuté : ticket 11136388574 au prix 1.11172
+Qualité d'exécution : 1 tentative(s), latence 62 ms, glissement défavorable +0.0 point(s)
+Position visible : EURUSD buy 0.01 lot, SL=1.10972, TP=1.11772
+-> Regardez l'onglet « Trade » de MetaTrader 5 : la position reste ouverte 20 s.
+Position fermée.
+Solde final : 99753.97 USD (écart dû au spread)

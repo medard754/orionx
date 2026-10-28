@@ -76,7 +76,9 @@ Fermer la position GBPUSD et remettre les valeurs de config.yaml après le test.
 `Add-Content calendar.csv "$((Get-Date).ToUniversalTime().AddMinutes(10).ToString('yyyy-MM-ddTHH:mm:ssZ')),EUR,high,Test BCE"` ;
 dans config.yaml, `analysis:` -> `calendar_path: calendar.csv`. Fenêtre B : `run --config config.yaml`. Fenêtre A :
 `demo-trade --hold 300` (OUI). Attendu dans `audit-tail` : `ThesisDegraded` (raison « annonce imminente ») puis `PositionAdjusted`
-(`THESIS_STOP` si la position est en gain, sinon `THESIS_WATCH`). Retirer ensuite la ligne de test du calendrier.
+(`THESIS_STOP` : le stop est resserré, de moitié de la distance si la position n'est pas en gain, au point d'entrée si elle l'est ;
+`THESIS_WATCH` seulement si le stop est déjà serré). VALIDÉ le 28 oct. (`docs/validation/V-8.5_annonce_2026-10-28.txt`).
+Retirer ensuite la ligne de test du calendrier.
 **8.6 Mode sûr** : `run --config config.yaml`, couper le Wi-Fi 45 s : `DataFrozen` puis `CircuitBreakerTripped` ; au retour : `DataRestored`.
 **8.7 Backtests** (quelques minutes chacun) : `backtest --bars 15000 --strategy trend_pullback --config config.yaml`, idem avec
 `mean_reversion`, `breakout`, `engine:trend_pullback,breakout`. Aucune stratégie n'a d'avantage démontré : ne rien activer sans le témoin aléatoire.
