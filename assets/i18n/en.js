@@ -169,7 +169,7 @@
  "analyse-du-marche-en-six": "Market analysis in six tabs, guided order ticket, signals explained in plain language with the amounts at stake.",
  "analyse-du-marche-tendance-momentum": "<strong>Market analysis.</strong> Trend, momentum, volatility, levels, session and the agent's decision: a reading of the state of the market, never advice.",
  "ticket-d-ordre-guide-vous": "<strong>Guided order ticket.</strong> You choose the direction and the stop; ORIONX calculates the size, shows what you risk and checks your limits.",
- "signaux-expliques-pourquoi-ce-signal": "<strong>Explained signals.</strong> Why this signal, how much you risk, how much you can gain, and the risk manager's verdict.",
+ "signaux-expliques-pourquoi-ce-signal": "<strong>Explained signals.</strong> Why this signal, the most you can lose, the target gain if it works (never guaranteed), and the risk manager's verdict.",
  "donnees-de-demonstration-simulees-le": "Simulated demonstration data. The dashboard is currently available in French only.",
  "comment-ca-marche": "How it works",
  "trois-etapes-zero-boite-noire": "Three steps, <span class=\"grad\">zero black box</span>.",
