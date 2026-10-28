@@ -1,6 +1,6 @@
 import tempfile
 import unittest
-from datetime import timedelta
+from datetime import UTC, timedelta
 from pathlib import Path
 
 from orionx.agent import Agent
@@ -270,9 +270,9 @@ class AgentAnalysisTests(unittest.IsolatedAsyncioTestCase):
 
 
 def datetime_at(hour: int):
-    from datetime import datetime, timezone
+    from datetime import datetime
 
-    return datetime(2026, 10, 14, hour, 0, tzinfo=timezone.utc)
+    return datetime(2026, 10, 14, hour, 0, tzinfo=UTC)
 
 
 GBPUSD_SPEC = EURUSD.__class__("GBPUSD", 5, 1e-5, 1e-5, 1.0, 0.01, 100.0, 0.01)
@@ -316,7 +316,9 @@ class AgentM4M5Tests(unittest.IsolatedAsyncioTestCase):
 
     async def test_execution_quality_is_journaled(self) -> None:
         await self.build(engine=None)
-        self.agent.engine = __import__("orionx.decision.engine", fromlist=["x"]).DecisionEngine([__import__("orionx.decision.engine", fromlist=["x"]).StrategyEntry(StubStrategy())])
+        from orionx.decision.engine import DecisionEngine, StrategyEntry
+
+        self.agent.engine = DecisionEngine([StrategyEntry(StubStrategy())])
         await self.cycle()
         await self.cycle(new=True)
         self.assertIn("ExecutionQuality", self.kinds())

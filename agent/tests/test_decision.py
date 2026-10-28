@@ -110,14 +110,12 @@ class EngineEvaluateTests(unittest.TestCase):
 
 class EngineRankTests(unittest.TestCase):
     def result(self, eng, symbol, side, conf):
-        s = Fixed(f"s-{symbol}", side, conf)
-        return eng.evaluate(symbol, [], tk(symbol), T0, [], None) if False else EngineResult(
-            symbol, eng.evaluate(symbol, [], tk(symbol), T0, [], None).candidates
-        )
+        return EngineResult(symbol, eng.evaluate(symbol, [], tk(symbol), T0, [], None).candidates)
 
     def build(self, **cfg):
         eng = engine([StrategyEntry(Fixed("e", Side.BUY, 0.8, "EURUSD")), StrategyEntry(Fixed("g", Side.BUY, 0.7, "GBPUSD")),
-                      StrategyEntry(Fixed("j", Side.BUY, 0.6, "USDJPY")), StrategyEntry(Fixed("h", Side.SELL, 0.5, "EURGBP"))], **cfg)  # fmt: skip
+                      StrategyEntry(Fixed("j", Side.BUY, 0.6, "USDJPY")),
+                      StrategyEntry(Fixed("h", Side.SELL, 0.5, "EURGBP"))], **cfg)  # fmt: skip
         results = [eng.evaluate(s, [], tk(s), T0, [], None) for s in ("EURUSD", "GBPUSD", "USDJPY", "EURGBP")]
         return eng, results
 

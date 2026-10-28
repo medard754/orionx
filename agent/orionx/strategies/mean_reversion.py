@@ -47,7 +47,8 @@ class MeanReversion:
         if not ok or sl <= 0 or abs(tp - entry) / abs(entry - sl) < self.min_rr:
             return None
         return TradeProposal(
-            f"{symbol}-mr-{last.time:%Y%m%d%H%M}-{side.value}", symbol, side, sl, tp, 0.5 + min(0.2, (70 - rsi if side is Side.BUY else rsi - 30) / 100),
+            f"{symbol}-mr-{last.time:%Y%m%d%H%M}-{side.value}", symbol, side, sl, tp,
+            0.5 + min(0.2, (70 - rsi if side is Side.BUY else rsi - 30) / 100),
             self.name, (f"clôture hors bande de Bollinger ({self.k}σ)", f"RSI {rsi:.0f}", "objectif : retour à la moyenne"),
             now, now + timedelta(seconds=self.valid_seconds),
         )  # fmt: skip

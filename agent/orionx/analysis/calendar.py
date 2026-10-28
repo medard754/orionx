@@ -10,7 +10,7 @@ from __future__ import annotations
 import csv
 from collections.abc import Iterable
 from dataclasses import dataclass
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 from orionx.core.errors import ConfigError
@@ -40,13 +40,13 @@ class EconomicCalendar:
         events: list[EconomicEvent] = []
         lines = [(i, line) for i, line in enumerate(Path(path).read_text(encoding="utf-8").splitlines(), 1)
                  if line.strip() and not line.lstrip().startswith("#")]  # fmt: skip
-        for (i, line), row in zip(lines, csv.reader(l for _, l in lines), strict=True):
+        for (i, _line), row in zip(lines, csv.reader(text for _, text in lines), strict=True):
             if i == lines[0][0] and row and row[0].strip().lower() == "datetime_utc":
                 continue  # en-tête
             try:
                 when = datetime.fromisoformat(row[0].strip().replace("Z", "+00:00"))
                 if when.tzinfo is None:
-                    when = when.replace(tzinfo=timezone.utc)
+                    when = when.replace(tzinfo=UTC)
                 impact = row[2].strip().lower()
                 if impact not in RANK:
                     raise ValueError(f"impact inconnu : {impact}")

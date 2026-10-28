@@ -18,7 +18,7 @@ from orionx.analysis.filters import FILTERS
 from orionx.analysis.state import session_of
 from orionx.analysis.tzutil import server_to_utc_eet
 from orionx.audit.log import AuditLog
-from orionx.backtest.runner import BacktestResult, Trade, run_backtest
+from orionx.backtest.runner import BacktestParams, BacktestResult, Trade, run_backtest
 from orionx.backtest.walkforward import RandomReference, random_reference, split_folds
 from orionx.core.models import Bar, SymbolSpec
 from orionx.strategies.trend_pullback import Strategy
@@ -26,7 +26,7 @@ from orionx.strategies.trend_pullback import Strategy
 HOLDOUT_DAYS = 183
 N_BLOCKS = 4
 RANDOM_RUNS = 40
-COSTS = {"spread_points": 10.0, "commission_per_lot": 7.0}
+COSTS: BacktestParams = {"spread_points": 10.0, "commission_per_lot": 7.0}
 NAMES = ("none", "vol", "session", "trend", "all")  # « none » est la référence, pas une hypothèse
 MIN_DEV_TRADES, MIN_HOLDOUT_TRADES = 100, 20
 PF_MIN, DD_MAX, BEAT_RANDOM_MIN, BLOCKS_REQUIRED = 1.2, 10.0, 0.95, 3
@@ -110,13 +110,17 @@ def pick_candidate(reports: Sequence[FilterReport]) -> FilterReport | None:
     return max(ok, key=lambda r: (r.ref.share_worse, r.total.profit_factor), default=None)
 
 
+def costs_for(name: str) -> BacktestParams:
+    return {**COSTS, "entry_filter": FILTERS[name]}
+
+
 # --- exécution -----------------------------------------------------------------------------------
 def run_dev(bars: Sequence[Bar], spec: SymbolSpec, symbol: str, make_strategy: Callable[[], Strategy], *,
             random_runs: int = RANDOM_RUNS, names: Sequence[str] = NAMES) -> list[FilterReport]:  # fmt: skip
     """Les 5 configurations sur les données de DÉVELOPPEMENT uniquement (l'appelant a déjà retiré la réserve)."""
     reports = []
     for name in names:
-        costs = {**COSTS, "entry_filter": FILTERS[name]}
+        costs = costs_for(name)
         total = run_backtest(bars, make_strategy(), spec, symbol, **costs)
         folds = [run_backtest(part, make_strategy(), spec, symbol, **costs) for part in split_folds(bars, N_BLOCKS)]
         ref = random_reference(bars, spec, symbol, total.net_profit, runs=random_runs, **costs)
@@ -126,7 +130,7 @@ def run_dev(bars: Sequence[Bar], spec: SymbolSpec, symbol: str, make_strategy: C
 
 def run_holdout(bars: Sequence[Bar], spec: SymbolSpec, symbol: str, make_strategy: Callable[[], Strategy],
                 name: str) -> tuple[BacktestResult, Verdict]:  # fmt: skip
-    r = run_backtest(bars, make_strategy(), spec, symbol, **COSTS, entry_filter=FILTERS[name])
+    r = run_backtest(bars, make_strategy(), spec, symbol, **costs_for(name))
     return r, judge_holdout(r)
 
 

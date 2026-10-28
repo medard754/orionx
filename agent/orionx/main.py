@@ -24,6 +24,7 @@ import os
 import sys
 from datetime import timedelta
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from orionx.connector_mt5.simulated import SimulatedGateway
 from orionx.core.bus import EventBus
@@ -33,6 +34,9 @@ from orionx.core.models import Side, SymbolSpec, TradeProposal, utcnow
 from orionx.execution.executor import Executor
 from orionx.risk.approval import ApprovalSigner
 from orionx.risk.manager import RiskManager
+
+if TYPE_CHECKING:
+    from orionx.connector_mt5.mt5_real import Mt5Gateway
 
 DATA_DIR = Path(os.environ.get("ORIONX_DATA_DIR", "data"))
 KILL_FLAG = DATA_DIR / "KILL_SWITCH.json"
@@ -80,7 +84,7 @@ async def simulate(cfg: AppConfig) -> int:
     return 0
 
 
-def _mt5_gateway() -> "Mt5Gateway | None":  # noqa: UP037
+def _mt5_gateway() -> Mt5Gateway | None:
     from orionx.connector_mt5.mt5_real import Mt5Gateway  # import tardif (Windows)
 
     path = os.environ.get("ORIONX_MT5_PATH")
@@ -291,7 +295,7 @@ async def backtest_cmd(symbol: str, n_bars: int, folds: int, csv_path: Path | No
     import csv
 
     from orionx.analysis.filters import FILTERS
-    from orionx.backtest.runner import run_backtest
+    from orionx.backtest.runner import BacktestParams, run_backtest
     from orionx.backtest.walkforward import random_reference, split_folds
     cfg = cfg or AppConfig()
     make_strategy(strategy, cfg)  # échoue tout de suite si le nom est inconnu
@@ -319,13 +323,14 @@ async def backtest_cmd(symbol: str, n_bars: int, folds: int, csv_path: Path | No
 
     summary, first_total = [], None
     for name in names:
-        costs = {"spread_points": 10.0, "commission_per_lot": 7.0, "entry_filter": FILTERS[name]}
+        costs: BacktestParams = {"spread_points": 10.0, "commission_per_lot": 7.0, "entry_filter": FILTERS[name]}
         total = run_backtest(bars, make_strategy(strategy, cfg), spec, symbol, **costs)
         first_total = first_total or total
         print(f"\n=== FILTRE « {name} » ===\n " + line("total", total) + f"   (signaux écartés : {total.filtered})")
         if folds > 1 and len(bars) // folds >= 600:
             for i, part in enumerate(split_folds(bars, folds), 1):
-                print(" " + line(f"bloc {i} ({part[0].time:%m-%d})", run_backtest(part, make_strategy(strategy, cfg), spec, symbol, **costs)))
+                block = run_backtest(part, make_strategy(strategy, cfg), spec, symbol, **costs)
+                print(" " + line(f"bloc {i} ({part[0].time:%m-%d})", block))
         ref = random_reference(bars, spec, symbol, total.net_profit, runs=random_runs, **costs)
         print(f"  témoin aléatoire ({ref.runs} tirages, même filtre, mêmes coûts) : net moyen {ref.mean_net:+.0f} "
               f"(écart-type {ref.std_net:.0f}), PF moyen {ref.mean_pf:.2f} -> stratégie meilleure que {ref.share_worse:.0%} des tirages")
@@ -339,8 +344,8 @@ async def backtest_cmd(symbol: str, n_bars: int, folds: int, csv_path: Path | No
         with open(csv_path, "w", newline="", encoding="utf-8") as f:
             w = csv.writer(f)
             w.writerow(["ouverture", "sens", "entree", "sortie", "lots", "profit", "raison"])
-            for t in first_total.log:
-                w.writerow([t.opened, t.side, t.entry, t.exit, t.volume, round(t.profit, 2), t.reason])
+            for trade in first_total.log:
+                w.writerow([trade.opened, trade.side, trade.entry, trade.exit, trade.volume, round(trade.profit, 2), trade.reason])
         print(f"Détail des trades (premier filtre) : {csv_path}")
     return 0
 
@@ -382,7 +387,8 @@ async def h1_cmd(symbol: str, open_holdout: str | None, cfg: AppConfig) -> int:
     reports = h1.run_dev(dev, spec, symbol, make)
 
     def line(label: str, r) -> str:  # type: ignore[no-untyped-def]
-        return f"{label:<12} trades={r.trades:>4}  gagnants={r.win_rate:>4.0%}  PF={r.profit_factor:>5.2f}  net={r.net_profit:>+9.2f}  DD={r.max_drawdown_pct:>5.1f} %"  # fmt: skip
+        return (f"{label:<12} trades={r.trades:>4}  gagnants={r.win_rate:>4.0%}  PF={r.profit_factor:>5.2f}  "
+                f"net={r.net_profit:>+9.2f}  DD={r.max_drawdown_pct:>5.1f} %")  # fmt: skip
 
     for r in reports:
         role = "RÉFÉRENCE" if r.name == "none" else "hypothèse"
@@ -406,7 +412,8 @@ async def h1_cmd(symbol: str, open_holdout: str | None, cfg: AppConfig) -> int:
             print()
             print(f"TRADES PERDANTS « {name} » (descriptif : ne sert jamais à régler un paramètre)")
             for dim, groups in h1.loser_breakdown(rep.total.log).items():
-                print("  " + dim + " : " + " · ".join(f"{k} {g.losers}/{g.trades} perdants net {g.net:+.0f}" for k, g in sorted(groups.items())))  # fmt: skip
+                cells = (f"{k} {g.losers}/{g.trades} perdants net {g.net:+.0f}" for k, g in sorted(groups.items()))
+                print("  " + dim + " : " + " · ".join(cells))
     if cand is None:
         print()
         print("Aucune hypothèse ne passe tous les critères : la réserve reste FERMÉE. Décision : NO-GO.")
@@ -424,10 +431,10 @@ async def h1_cmd(symbol: str, open_holdout: str | None, cfg: AppConfig) -> int:
     except h1.HoldoutAlreadyOpened as exc:
         print(f"Refusé : {exc}")
         return 3
-    r, verdict = h1.run_holdout(hold, spec, symbol, make, cand.name)
+    held, verdict = h1.run_holdout(hold, spec, symbol, make, cand.name)
     print()
     print("=== RÉSERVE (ouverture unique) ===")
-    print(" " + line(cand.name, r))
+    print(" " + line(cand.name, held))
     for c in verdict.criteria:
         print(f"   [{'OK' if c.passed else 'ÉCHEC'}] {c.name}: {c.detail}")
     print()
@@ -438,7 +445,9 @@ async def h1_cmd(symbol: str, open_holdout: str | None, cfg: AppConfig) -> int:
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="orionx")
-    parser.add_argument("command", choices=["simulate", "mt5-check", "demo-trade", "run", "kill", "clear-kill", "audit-verify", "audit-tail", "backtest", "state", "risk-set", "risk-status", "risk-check"])
+    commands = ["simulate", "mt5-check", "demo-trade", "run", "kill", "clear-kill", "audit-verify", "audit-tail",
+                "backtest", "state", "risk-set", "risk-status", "risk-check"]  # fmt: skip
+    parser.add_argument("command", choices=commands)
     parser.add_argument("--yes", action="store_true", help="demo-trade : ne pas demander confirmation")
     parser.add_argument("--hold", type=float, default=10.0, help="demo-trade : secondes avant fermeture")
     parser.add_argument("--config", type=Path, default=None)
@@ -457,7 +466,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--random-runs", type=int, default=20, help="backtest : nombre de tirages du témoin aléatoire")
     parser.add_argument("--csv", type=Path, default=None, help="backtest : exporte les trades en CSV")
     parser.add_argument("--h1", action="store_true", help="backtest : protocole H-1/V-3 (réserve de 6 mois jamais évaluée ici)")
-    parser.add_argument("--open-holdout", default=None, metavar="FILTRE", help="backtest --h1 : ouvre la réserve UNE fois, pour le candidat désigné")
+    parser.add_argument("--open-holdout", default=None, metavar="FILTRE",
+                        help="backtest --h1 : ouvre la réserve UNE fois, pour le candidat désigné")
     args = parser.parse_args(argv)
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
     cfg = _config(str(args.config) if args.config else None)

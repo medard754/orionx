@@ -1,7 +1,7 @@
+import sqlite3
 import tempfile
 import unittest
 from pathlib import Path
-import sqlite3
 
 from orionx.audit.log import AuditLog, attach
 from orionx.core.bus import EventBus

@@ -2,11 +2,15 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from orionx.core.errors import ConfigError
+
+if TYPE_CHECKING:
+    from orionx.positions.manager import PositionRules
 
 # Valeurs maximales codées en dur : aucun fichier de configuration ne peut les dépasser.
 ABSOLUTE_LIMITS: dict[str, float] = {
@@ -128,7 +132,7 @@ class PositionsConfig:
         if not 0 < self.partial_fraction < 1 or self.breakeven_r <= 0 or self.trail_r <= 0:
             raise ConfigError("positions : partial_fraction dans ]0,1[, breakeven_r et trail_r > 0")
 
-    def to_rules(self):  # type: ignore[no-untyped-def]
+    def to_rules(self) -> PositionRules:
         from orionx.positions.manager import PositionRules  # import tardif : évite une dépendance circulaire
 
         return PositionRules(**self.__dict__)
@@ -173,7 +177,7 @@ class AppConfig:
             raise ConfigError("stale_halt_seconds doit être supérieur à max_data_age_seconds")
 
 
-def _section(name: str, build):  # type: ignore[no-untyped-def]
+def _section[T](name: str, build: Callable[[], T]) -> T:
     """Construit une section de configuration en nommant la section fautive et la clé inconnue."""
     try:
         return build()

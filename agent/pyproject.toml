@@ -10,7 +10,7 @@ requires-python = ">=3.12"
 dependencies = ["PyYAML>=6.0"]
 
 [project.optional-dependencies]
-dev = ["pytest>=8", "hypothesis>=6", "ruff>=0.5", "mypy>=1.10", "types-PyYAML"]
+dev = ["pytest>=8", "hypothesis>=6", "ruff~=0.17.0", "mypy~=2.4", "types-PyYAML"]  # outils bloquants en CI : versions bornées
 mt5 = ["MetaTrader5; sys_platform == 'win32'"]
 
 [tool.setuptools.packages.find]
@@ -20,13 +20,19 @@ include = ["orionx*"]
 testpaths = ["tests"]
 
 [tool.ruff]
-line-length = 120
+line-length = 140  # le code écrit volontairement des lignes longues (# fmt: skip) : 15 lignes seulement dépassent 140
 target-version = "py312"
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "B", "UP", "SIM"]
+# UP042 ignoré : StrEnum change str(membre), donc le texte écrit dans le journal d'audit chaîné par hachage.
+ignore = ["UP042"]
 
 [tool.mypy]
 python_version = "3.12"
 strict = true
 files = ["orionx"]
+
+[[tool.mypy.overrides]]
+module = ["MetaTrader5", "MetaTrader5.*"]  # pas de stubs, et absent de la CI Linux
+ignore_missing_imports = true

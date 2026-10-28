@@ -1,13 +1,13 @@
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from orionx.core.config import RiskConfig
 from orionx.core.models import AccountState, Side, SymbolSpec, Tick, TradeProposal
 from orionx.risk.approval import ApprovalSigner
 from orionx.risk.manager import RiskManager
 
-T0 = datetime(2026, 10, 12, 10, 0, 0, tzinfo=timezone.utc)
+T0 = datetime(2026, 10, 12, 10, 0, 0, tzinfo=UTC)
 EURUSD = SymbolSpec("EURUSD", 5, 1e-5, 1e-5, 1.0, 0.01, 100.0, 0.01)
 SPECS = {"EURUSD": EURUSD}
 
