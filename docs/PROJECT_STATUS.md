@@ -57,6 +57,11 @@ Dernière mise à jour : 27 oct. 2026 · Phase : validation M3 à M7 sur MT5 dé
   l'identique avant de démarrer. Retour à la moyenne PF 0,94 / DD 11,6 % (140 trades, bruit), cassure PF 0,89 / DD 35,5 %, routeur complet
   PF 0,92 / DD 35,4 %. **7 hypothèses testées, aucune retenue ; réserve toujours vierge.** Détail : `docs/validation/H-2_protocole.md` §9.
 
+- [x] **Dashboard : mode débutant** (28 oct. 2026) : bascule « Mode débutant » (activée par défaut), glossaire en langage simple sur chaque
+  indicateur, et pour chaque signal une carte « Pourquoi ce signal ? » avec les montants en jeu (perte maximale, gain visé, taille du lot,
+  % du capital) calculés à blanc par le gestionnaire de risques (aucun ordre), le verdict du risque en phrases, et le rappel « aucun
+  avantage démontré ». La confirmation d'approbation reprend ces montants. Descriptif, jamais de conseil d'achat ou de vente.
+
 ## À faire (ordre recommandé)
 
 | ID | Tâche | Preuve que c'est fini |
