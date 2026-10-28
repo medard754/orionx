@@ -4,23 +4,24 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="color-scheme" content="dark">
-  <title>ORIONX · AI Trading Agent</title>
-  <meta name="description" content="ORIONX, agent de trading algorithmique pour MetaTrader 5, conçu autour de la gestion du risque. En développement, compte démo uniquement.">
+  <title data-i18n="orionx-ai-trading-agent-2">ORIONX · AI Trading Agent</title>
+  <meta data-i18n-attr="content:orionx-agent-de-trading-algorithmique" name="description" content="ORIONX, agent de trading algorithmique pour MetaTrader 5, conçu autour de la gestion du risque. En développement, compte démo uniquement.">
   <link rel="icon" type="image/png" href="assets/favicon.png">
   <link rel="stylesheet" href="assets/site.css">
 </head>
 <body>
   <header class="nav">
     <div class="wrap">
-      <a class="brand" href="index.html"><img src="assets/logo.png" alt="ORIONX, AI Trading Agent" width="138" height="46"></a>
-      <button class="burger" type="button" aria-expanded="false" aria-controls="menu">Menu</button>
+      <a class="brand" href="index.html"><img data-i18n-attr="alt:orionx-ai-trading-agent" src="assets/logo.png" alt="ORIONX, AI Trading Agent" width="138" height="46"></a>
+      <button data-i18n="menu" class="burger" type="button" aria-expanded="false" aria-controls="menu">Menu</button>
       <ul id="menu">
-        <li><a href="index.html">Produit</a></li>
-        <li><a href="abonnement.html">Abonnement</a></li>
-        <li><a href="a-propos.html">À propos</a></li>
-        <li><a href="contact.html">Contact</a></li>
+        <li><a data-i18n="produit" href="index.html">Produit</a></li>
+        <li><a data-i18n="abonnement" href="abonnement.html">Abonnement</a></li>
+        <li><a data-i18n="a-propos" href="a-propos.html">À propos</a></li>
+        <li><a data-i18n="contact" href="contact.html">Contact</a></li>
       </ul>
-      <a class="btn btn-sm login" href="connexion.html">Se connecter</a>
+      <div class="lang" role="group" data-i18n-attr="aria-label:lang-group" aria-label="Langue"><button type="button" data-lang="fr" aria-pressed="true">FR</button><button type="button" data-lang="en" aria-pressed="false">EN</button><button type="button" data-lang="es" aria-pressed="false">ES</button></div>
+      <a data-i18n="se-connecter" class="btn btn-sm login" href="connexion.html">Se connecter</a>
     </div>
   </header>
 
@@ -28,17 +29,17 @@
     <section class="hero">
       <div class="wrap">
         <div>
-          <span class="eyebrow">AI Trading Agent · MetaTrader 5</span>
-          <h1>Le trading algorithmique, <span class="grad">risque d'abord.</span></h1>
-          <p class="lead">ORIONX analyse le marché, propose des trades et ne les exécute que s'ils passent un contrôle de risque strict. Vous gardez la main à chaque étape.</p>
+          <span data-i18n="ai-trading-agent-metatrader-5" class="eyebrow">AI Trading Agent · MetaTrader 5</span>
+          <h1 data-i18n="le-trading-algorithmique-risque-d">Le trading algorithmique, <span class="grad">risque d'abord.</span></h1>
+          <p data-i18n="orionx-analyse-le-marche-propose" class="lead">ORIONX analyse le marché, propose des trades et ne les exécute que s'ils passent un contrôle de risque strict. Vous gardez la main à chaque étape.</p>
           <div class="ctas">
-            <a class="btn btn-neon" href="abonnement.html">Rejoindre l'accès anticipé</a>
-            <a class="btn" href="#fonctionnalites">Découvrir l'agent</a>
+            <a data-i18n="rejoindre-l-acces-anticipe" class="btn btn-neon" href="abonnement.html">Rejoindre l'accès anticipé</a>
+            <a data-i18n="decouvrir-l-agent" class="btn" href="#fonctionnalites">Découvrir l'agent</a>
           </div>
           <div class="chips">
-            <span class="chip"><b>✓</b> Stop-loss obligatoire</span>
-            <span class="chip"><b>✓</b> Ordres signés</span>
-            <span class="chip"><b>✓</b> Journal d'audit</span>
+            <span data-i18n="stop-loss-obligatoire" class="chip"><b>✓</b> Stop-loss obligatoire</span>
+            <span data-i18n="ordres-signes" class="chip"><b>✓</b> Ordres signés</span>
+            <span data-i18n="journal-d-audit" class="chip"><b>✓</b> Journal d'audit</span>
           </div>
         </div>
         <div class="scene" aria-hidden="true">
@@ -47,9 +48,9 @@
             <div class="orbit orbit-2"></div>
             <div class="core"></div>
             <div class="phone"><div class="screen"><img src="assets/apercu-mobile.png" alt=""></div></div>
-            <div class="float-chip fc-1"><small>Risque</small><strong class="ok">0,5 % par trade</strong></div>
-            <div class="float-chip fc-2"><small>Alerte Telegram</small><strong>Liaison MT5 rétablie</strong></div>
-            <div class="float-chip fc-3"><small>Compte</small><strong class="warn">Démo</strong></div>
+            <div class="float-chip fc-1"><small data-i18n="risque">Risque</small><strong data-i18n="0-5-par-trade" class="ok">0,5 % par trade</strong></div>
+            <div class="float-chip fc-2"><small data-i18n="alerte-telegram">Alerte Telegram</small><strong data-i18n="liaison-mt5-retablie">Liaison MT5 rétablie</strong></div>
+            <div class="float-chip fc-3"><small data-i18n="compte">Compte</small><strong data-i18n="demo" class="warn">Démo</strong></div>
           </div>
         </div>
       </div>
@@ -57,58 +58,102 @@
       <div class="floor"></div>
     </section>
 
+    <section class="section core-section" id="coeur">
+      <div class="wrap core-grid">
+        <div class="reveal">
+          <span data-i18n="le-cur-d-orionx" class="eyebrow">Le cœur d'ORIONX</span>
+          <h2 data-i18n="une-ia-qui-propose-un">Une IA qui propose, <span class="grad">un code qui décide</span>.</h2>
+          <p data-i18n="chaque-idee-de-l-agent" class="lead">Chaque idée de l'agent est une impulsion qui traverse le réseau, puis rencontre le périmètre de contrôle du risque. Celles qui respectent vos limites passent ; les autres sont refusées, et le refus est inscrit au journal.</p>
+          <ul class="legend">
+            <li data-i18n="idee-de-trade-proposee-par"><i class="dot d-idea"></i> Idée de trade proposée par l'IA</li>
+            <li data-i18n="validee-par-le-gestionnaire-de"><i class="dot d-ok"></i> Validée par le gestionnaire de risques</li>
+            <li data-i18n="refusee-par-le-gestionnaire-de"><i class="dot d-no"></i> Refusée par le gestionnaire de risques</li>
+          </ul>
+          <p data-i18n="illustration-animee-aucune-donnee-de" class="caption">Illustration animée : aucune donnée de marché réelle, aucun résultat promis.</p>
+        </div>
+        <div class="core3d reveal">
+          <canvas data-i18n-attr="aria-label:illustration-animee-un-reseau-neuronal" id="core3d" width="560" height="560" role="img" aria-label="Illustration animée : un réseau neuronal en 3D entouré d'un périmètre de contrôle du risque que traversent, ou que n'atteignent pas, les idées de trade."></canvas>
+        </div>
+      </div>
+    </section>
+
     <section class="section" id="fonctionnalites">
       <div class="wrap">
         <div class="section-head reveal">
-          <span class="eyebrow">Fonctionnalités</span>
-          <h2>Un agent qui sait <span class="grad">dire non</span>.</h2>
-          <p>Chaque proposition traverse un gestionnaire de risques déterministe avant d'atteindre le marché. L'intelligence propose, le code décide.</p>
+          <span data-i18n="fonctionnalites" class="eyebrow">Fonctionnalités</span>
+          <h2 data-i18n="un-agent-qui-sait-dire">Un agent qui sait <span class="grad">dire non</span>.</h2>
+          <p data-i18n="chaque-proposition-traverse-un-gestionnaire">Chaque proposition traverse un gestionnaire de risques déterministe avant d'atteindre le marché. L'intelligence propose, le code décide.</p>
         </div>
         <div class="grid grid-3">
           <article class="card reveal">
             <div class="icon"><svg viewBox="0 0 24 24"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/><path d="M9 12l2 2 4-4"/></svg></div>
-            <h3>Risque sous contrôle</h3>
-            <p>Stop-loss obligatoire, perte maximale du jour et de la semaine, exposition par devise, toute hausse du risque retardée de 24 h.</p>
+            <h3 data-i18n="risque-sous-controle">Risque sous contrôle</h3>
+            <p data-i18n="stop-loss-obligatoire-perte-maximale">Stop-loss obligatoire, perte maximale du jour et de la semaine, exposition par devise, toute hausse du risque retardée de 24 h.</p>
           </article>
           <article class="card reveal">
             <div class="icon"><svg viewBox="0 0 24 24"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg></div>
-            <h3>Ordres signés</h3>
-            <p>Seul un ordre approuvé et signé cryptographiquement par le gestionnaire de risques peut être exécuté, avec une courte durée de validité.</p>
+            <h3 data-i18n="ordres-signes-2">Ordres signés</h3>
+            <p data-i18n="seul-un-ordre-approuve-et">Seul un ordre approuvé et signé cryptographiquement par le gestionnaire de risques peut être exécuté, avec une courte durée de validité.</p>
           </article>
           <article class="card reveal">
             <div class="icon"><svg viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="M7 15l4-4 3 3 5-6"/></svg></div>
-            <h3>Dashboard en direct</h3>
-            <p>Équité, positions, signaux à approuver et événements en temps réel, dans votre navigateur, sur votre propre machine.</p>
+            <h3 data-i18n="dashboard-en-direct">Dashboard en direct</h3>
+            <p data-i18n="equite-positions-signaux-a-approuver">Équité, positions, signaux à approuver et événements en temps réel, dans votre navigateur, sur votre propre machine.</p>
           </article>
           <article class="card reveal">
             <div class="icon"><svg viewBox="0 0 24 24"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 8-3 8h18s-3-1-3-8"/><path d="M13.7 20a2 2 0 0 1-3.4 0"/></svg></div>
-            <h3>Alertes sur votre téléphone</h3>
-            <p>Arrêt automatique, coupure du terminal, ordre exécuté : les événements importants arrivent sur Telegram, sans jamais bloquer l'agent.</p>
+            <h3 data-i18n="alertes-sur-votre-telephone">Alertes sur votre téléphone</h3>
+            <p data-i18n="arret-automatique-coupure-du-terminal">Arrêt automatique, coupure du terminal, ordre exécuté : les événements importants arrivent sur Telegram, sans jamais bloquer l'agent.</p>
           </article>
           <article class="card reveal">
             <div class="icon"><svg viewBox="0 0 24 24"><path d="M13 2L4 14h7l-1 8 9-12h-7z"/></svg></div>
-            <h3>Arrêt d'urgence</h3>
-            <p>Trois niveaux, en un clic : pause des entrées, protection des positions, clôture totale. Reconnexion automatique après une coupure.</p>
+            <h3 data-i18n="arret-d-urgence">Arrêt d'urgence</h3>
+            <p data-i18n="trois-niveaux-en-un-clic">Trois niveaux, en un clic : pause des entrées, protection des positions, clôture totale. Reconnexion automatique après une coupure.</p>
           </article>
           <article class="card reveal">
             <div class="icon"><svg viewBox="0 0 24 24"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9 13h6M9 17h6"/></svg></div>
-            <h3>Journal d'audit</h3>
-            <p>Chaque décision, approbation et refus est inscrit dans un journal chaîné par hachage, vérifiable à tout moment.</p>
+            <h3 data-i18n="journal-d-audit-2">Journal d'audit</h3>
+            <p data-i18n="chaque-decision-approbation-et-refus">Chaque décision, approbation et refus est inscrit dans un journal chaîné par hachage, vérifiable à tout moment.</p>
           </article>
         </div>
+      </div>
+    </section>
+
+    <section class="section" id="apercus">
+      <div class="wrap">
+        <div class="section-head reveal">
+          <span data-i18n="apercus" class="eyebrow">Aperçus</span>
+          <h2 data-i18n="le-tableau-de-bord-sans">Le tableau de bord, <span class="grad">sans jargon</span>.</h2>
+          <p data-i18n="analyse-du-marche-en-six">Analyse du marché en six onglets, ticket d'ordre guidé, signaux expliqués en langage simple avec les montants en jeu.</p>
+        </div>
+        <div class="gallery">
+          <figure class="shot wide reveal">
+            <img data-i18n-attr="alt:onglet-seance-et-annonces-de" src="assets/galerie-analyse.png" width="1440" height="430" loading="lazy" alt="Onglet Séance et annonces de l'analyse du marché : séance de Londres, spread, fenêtre d'annonce et prochaine annonce économique.">
+            <figcaption data-i18n="analyse-du-marche-tendance-momentum"><strong>Analyse du marché.</strong> Tendance, momentum, volatilité, niveaux, séance et décision de l'agent : une lecture de l'état du marché, jamais un conseil.</figcaption>
+          </figure>
+          <figure class="shot reveal">
+            <img data-i18n-attr="alt:ticket-d-ordre-guide-vous-2" src="assets/galerie-ticket.png" width="1440" height="630" loading="lazy" alt="Ticket d'ordre guidé : vous choisissez le sens et le stop-loss, ORIONX calcule la taille et affiche le risque maximal en dollars.">
+            <figcaption data-i18n="ticket-d-ordre-guide-vous"><strong>Ticket d'ordre guidé.</strong> Vous choisissez le sens et le stop ; ORIONX calcule la taille, montre ce que vous risquez et vérifie vos limites.</figcaption>
+          </figure>
+          <figure class="shot reveal">
+            <img data-i18n-attr="alt:signal-en-attente-avec-la" src="assets/galerie-signal.png" width="930" height="600" loading="lazy" alt="Signal en attente avec la carte Pourquoi ce signal : perte maximale, gain visé, taille du lot et verdict du gestionnaire de risques.">
+            <figcaption data-i18n="signaux-expliques-pourquoi-ce-signal"><strong>Signaux expliqués.</strong> Pourquoi ce signal, combien vous risquez, combien vous pouvez gagner, et le verdict du gestionnaire de risques.</figcaption>
+          </figure>
+        </div>
+        <p data-i18n="donnees-de-demonstration-simulees-le" class="caption center">Données de démonstration simulées. Le tableau de bord est actuellement disponible en français.</p>
       </div>
     </section>
 
     <section class="section">
       <div class="wrap">
         <div class="section-head reveal">
-          <span class="eyebrow">Comment ça marche</span>
-          <h2>Trois étapes, <span class="grad">zéro boîte noire</span>.</h2>
+          <span data-i18n="comment-ca-marche" class="eyebrow">Comment ça marche</span>
+          <h2 data-i18n="trois-etapes-zero-boite-noire">Trois étapes, <span class="grad">zéro boîte noire</span>.</h2>
         </div>
         <div class="grid grid-3 steps">
-          <article class="card step reveal"><h3>Connectez MetaTrader 5</h3><p>L'agent se rattache au terminal déjà ouvert sur votre PC. Aucun identifiant n'est stocké dans le code.</p></article>
-          <article class="card step reveal"><h3>L'agent analyse et propose</h3><p>Régime de marché, volatilité, séance, annonces économiques : chaque signal est expliqué et ré-évalué par le risque.</p></article>
-          <article class="card step reveal"><h3>Vous décidez</h3><p>Signaux seuls, approbation manuelle ou automatique verrouillée : vous choisissez le niveau d'autonomie.</p></article>
+          <article class="card step reveal"><h3 data-i18n="connectez-metatrader-5">Connectez MetaTrader 5</h3><p data-i18n="l-agent-se-rattache-au">L'agent se rattache au terminal déjà ouvert sur votre PC. Aucun identifiant n'est stocké dans le code.</p></article>
+          <article class="card step reveal"><h3 data-i18n="l-agent-analyse-et-propose">L'agent analyse et propose</h3><p data-i18n="regime-de-marche-volatilite-seance">Régime de marché, volatilité, séance, annonces économiques : chaque signal est expliqué et ré-évalué par le risque.</p></article>
+          <article class="card step reveal"><h3 data-i18n="vous-decidez">Vous décidez</h3><p data-i18n="signaux-seuls-approbation-manuelle-ou">Signaux seuls, approbation manuelle ou automatique verrouillée : vous choisissez le niveau d'autonomie.</p></article>
         </div>
       </div>
     </section>
@@ -116,38 +161,38 @@
     <section class="section" id="telecharger">
       <div class="wrap download">
         <div class="reveal">
-          <span class="eyebrow">Télécharger</span>
-          <h2>ORIONX Trade, <span class="grad">partout avec vous</span>.</h2>
-          <p class="lead">L'agent tourne sur votre PC Windows avec MetaTrader 5. L'application mobile permettra de suivre l'agent et d'approuver les signaux depuis votre téléphone.</p>
+          <span data-i18n="telecharger" class="eyebrow">Télécharger</span>
+          <h2 data-i18n="orionx-trade-partout-avec-vous">ORIONX Trade, <span class="grad">partout avec vous</span>.</h2>
+          <p data-i18n="l-agent-tourne-sur-votre" class="lead">L'agent tourne sur votre PC Windows avec MetaTrader 5. L'application mobile permettra de suivre l'agent et d'approuver les signaux depuis votre téléphone.</p>
           <div class="stores">
             <a class="store" href="contact.html?sujet=Liste%20d%27attente">
               <svg viewBox="0 0 24 24"><rect x="6" y="2" width="12" height="20" rx="3"/><path d="M11 18h2"/></svg>
-              <div><span>Bientôt sur</span><strong>App Store</strong></div>
-              <em class="soon">BIENTÔT</em>
+              <div><span data-i18n="bientot-sur">Bientôt sur</span><strong data-i18n="app-store">App Store</strong></div>
+              <em data-i18n="bientot" class="soon">BIENTÔT</em>
             </a>
             <a class="store" href="contact.html?sujet=Liste%20d%27attente">
               <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/></svg>
-              <div><span>Bientôt pour</span><strong>Windows</strong></div>
-              <em class="soon">BIENTÔT</em>
+              <div><span data-i18n="bientot-pour">Bientôt pour</span><strong data-i18n="windows">Windows</strong></div>
+              <em data-i18n="bientot" class="soon">BIENTÔT</em>
             </a>
           </div>
-          <p class="caption">Les applications ne sont pas encore publiées : inscrivez-vous à la liste d'attente pour être prévenu.</p>
+          <p data-i18n="les-applications-ne-sont-pas" class="caption">Les applications ne sont pas encore publiées : inscrivez-vous à la liste d'attente pour être prévenu.</p>
         </div>
         <div class="devices reveal" aria-hidden="true">
           <div class="laptop"><div class="lid"><img src="assets/apercu-ordinateur.png" alt=""></div><div class="base"></div></div>
           <div class="phone"><div class="screen"><img src="assets/apercu-mobile.png" alt=""></div></div>
         </div>
       </div>
-      <p class="wrap caption center">Aperçus du tableau de bord ORIONX, données de démonstration.</p>
+      <p data-i18n="apercus-du-tableau-de-bord" class="wrap caption center">Aperçus du tableau de bord ORIONX, données de démonstration.</p>
     </section>
 
     <section class="section">
       <div class="wrap">
         <div class="cta-band reveal">
-          <span class="eyebrow">Accès anticipé</span>
-          <h2>Prêt à trader <span class="grad">avec méthode</span> ?</h2>
-          <p>ORIONX est en développement actif. Rejoignez la liste d'attente pour suivre les étapes et tester l'agent en compte démo.</p>
-          <a class="btn btn-neon" href="abonnement.html">Voir les offres</a>
+          <span data-i18n="acces-anticipe" class="eyebrow">Accès anticipé</span>
+          <h2 data-i18n="pret-a-trader-avec-methode">Prêt à trader <span class="grad">avec méthode</span> ?</h2>
+          <p data-i18n="orionx-est-en-developpement-actif">ORIONX est en développement actif. Rejoignez la liste d'attente pour suivre les étapes et tester l'agent en compte démo.</p>
+          <a data-i18n="voir-les-offres" class="btn btn-neon" href="abonnement.html">Voir les offres</a>
         </div>
       </div>
     </section>
@@ -156,15 +201,19 @@
   <footer class="footer">
     <div class="wrap">
       <div class="cols">
-        <div><a class="brand" href="index.html"><img src="assets/logo.png" alt="ORIONX" width="150" height="50"></a><p>Agent de trading algorithmique pour MetaTrader 5, conçu autour de la gestion du risque.</p></div>
-        <div><h4>Produit</h4><ul><li><a href="index.html#fonctionnalites">Fonctionnalités</a></li><li><a href="index.html#telecharger">Télécharger</a></li><li><a href="abonnement.html">Abonnement</a></li></ul></div>
-        <div><h4>Société</h4><ul><li><a href="a-propos.html">À propos</a></li><li><a href="contact.html">Contact</a></li></ul></div>
-        <div><h4>Compte</h4><ul><li><a href="connexion.html">Se connecter</a></li></ul></div>
+        <div><a class="brand" href="index.html"><img data-i18n-attr="alt:orionx" src="assets/logo.png" alt="ORIONX" width="150" height="50"></a><p data-i18n="agent-de-trading-algorithmique-pour">Agent de trading algorithmique pour MetaTrader 5, conçu autour de la gestion du risque.</p></div>
+        <div><h4 data-i18n="produit">Produit</h4><ul><li><a data-i18n="fonctionnalites" href="index.html#fonctionnalites">Fonctionnalités</a></li><li><a data-i18n="telecharger" href="index.html#telecharger">Télécharger</a></li><li><a data-i18n="abonnement" href="abonnement.html">Abonnement</a></li></ul></div>
+        <div><h4 data-i18n="societe">Société</h4><ul><li><a data-i18n="a-propos" href="a-propos.html">À propos</a></li><li><a data-i18n="contact" href="contact.html">Contact</a></li></ul></div>
+        <div><h4 data-i18n="compte">Compte</h4><ul><li><a data-i18n="se-connecter" href="connexion.html">Se connecter</a></li></ul></div>
       </div>
-      <p class="risk"><strong>Avertissement sur les risques.</strong> Le trading sur le Forex et les CFD comporte un risque élevé de perte en capital et ne convient pas à tous les investisseurs. ORIONX est un logiciel en développement, utilisable uniquement sur compte démo ; aucune performance n'est promise ni démontrée. Les performances passées ne préjugent pas des performances futures. ORIONX ne fournit pas de conseil en investissement.</p>
-      <p>© <span data-year>2026</span> ORIONX. Tous droits réservés.</p>
+      <p data-i18n="avertissement-sur-les-risques-le" class="risk"><strong>Avertissement sur les risques.</strong> Le trading sur le Forex et les CFD comporte un risque élevé de perte en capital et ne convient pas à tous les investisseurs. ORIONX est un logiciel en développement, utilisable uniquement sur compte démo ; aucune performance n'est promise ni démontrée. Les performances passées ne préjugent pas des performances futures. ORIONX ne fournit pas de conseil en investissement.</p>
+      <p data-i18n="2026-orionx-tous-droits-reserves">© <span data-year>2026</span> ORIONX. Tous droits réservés.</p>
     </div>
   </footer>
+  <script src="assets/i18n/en.js"></script>
+  <script src="assets/i18n/es.js"></script>
+  <script src="assets/i18n.js"></script>
   <script src="assets/site.js"></script>
+  <script src="assets/core3d.js"></script>
 </body>
 </html>
