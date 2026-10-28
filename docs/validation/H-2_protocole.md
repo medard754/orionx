@@ -103,4 +103,43 @@ Descriptive seulement (sens, séance, jour, motif de sortie). Elle ne règle **j
 
 ## 9. Résultats
 
-*(à compléter après exécution)*
+### 9.1 Vérification préalable : H-1 se reproduit à l'identique
+
+Avant H-2, `backtest --h1` a été relancé après le chantier T-10 (et les autres changements du dépôt) : la sortie est **identique ligne à
+ligne** à `H-1_developpement_2026-10-27.txt` (1 109 trades, PF 0,86, drawdown 44,7 % pour la référence ; mêmes blocs, mêmes tirages, mêmes
+perdants). Le changement d'empreinte de `runner.py` et `config.py` n'a donc modifié aucun résultat.
+
+### 9.2 Développement (28 oct. 2026) – NO-GO
+
+Exécuté avec `python -m orionx.main backtest --h2` (outillage commité en `75f713a`, après ce protocole `6ce60a9`). Sortie complète :
+`H-2_developpement_2026-10-28.txt`. Données : `sha256=88180049abbeb362` (vérifiée par l'outil), 26 855 bougies de développement ; la réserve
+(3 145 bougies) **n'a pas été évaluée**.
+
+| Hypothèse | Trades | PF | Net ($) | DD % | Blocs PF > 1,2 | Bat le hasard | Verdict |
+|---|---|---|---|---|---|---|---|
+| H-2a mean_reversion (range) | 140 | 0,94 | -264 | 11,6 | 1/4 | 97,5 % | échec (blocs, drawdown) |
+| H-2b breakout | 1 006 | 0,89 | -3 222 | 35,5 | 0/4 | 32,5 % | échec (blocs, drawdown, hasard) |
+| H-2c routeur complet | 1 125 | 0,92 | -2 503 | 35,4 | 0/4 | 62,5 % | échec (blocs, drawdown, hasard) |
+
+**Échecs cumulés du projet : 7 sur 7 hypothèses testées** (4 dans H-1, 3 dans H-2). La réserve n'est pas consommée.
+
+### 9.3 Ce que le résultat dit, et ce qu'il ne dit pas
+
+- **H-2b et H-2c** (cassure de canal, routeur) sont clairement perdants : PF 0,89 et 0,92, drawdown de 35 %, pas meilleurs que le hasard.
+- **H-2a** est le plus proche mais reste un échec net : PF 0,94, drawdown 11,6 % (> 10 %), un seul bloc sur quatre au-dessus de 1,2. Elle passe le critère
+  « hasard » (39 tirages sur 40), mais **battre le hasard ne suffit pas** : le hasard perd lui aussi (les coûts font perdre une stratégie sans avantage),
+  d'où l'importance des critères de PF et de drawdown.
+- **H-2a repose sur 140 trades** (31 à 40 par bloc). À cette taille, l'incertitude sur le profit factor est de l'ordre de ± 0,25 : son 0,94 est
+  statistiquement indistinguable de 1,0, et aussi de 0,7. Ses blocs 2 et 4 (PF 1,12 et 1,66) et ses blocs 1 et 3 (0,61 et 0,71) illustrent surtout le bruit.
+  **On ne le « sauve » pas** en retenant le bloc favorable : le protocole est appliqué tel qu'écrit (§5, aucune tolérance).
+- Ce NO-GO dit : « aucune de ces règles de prix en H1 sur l'EURUSD ne montre d'avantage net des coûts sur 4,3 ans ». Il ne dit pas qu'aucune stratégie
+  ne peut fonctionner, ni que ces idées échoueraient sur d'autres marchés ou unités de temps.
+- Limites inchangées : un symbole, une unité de temps, spread fixe de 1 pip et commission supposée (le compte démo n'en a pas), pas de swap.
+
+### 9.4 Décision
+
+**NO-GO.** L'exécution automatique reste verrouillée. Conformément au §8, **on ne continue pas à chercher sur ces données** : les 2 places restantes du
+budget de H-2 ne sont pas utilisées. Toute suite doit venir d'ailleurs et faire l'objet d'un nouveau protocole écrit à l'avance (H-3) :
+nouvelles données ou autres symboles/unités de temps, ou une autre nature de signal (calendrier économique, coût de portage, plusieurs
+marchés), avec une réserve qui n'a jamais été regardée (celle-ci est toujours vierge). Ajouter des idées de même nature sur les mêmes
+données reviendrait à fouiller le hasard.
