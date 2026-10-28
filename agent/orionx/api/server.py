@@ -75,6 +75,7 @@ class PositionOut(BaseModel):
 
 
 class StatusOut(BaseModel):
+    simulated: bool = False
     autonomy: str
     cycles: int
     aborted: str | None
@@ -201,7 +202,8 @@ def create_app(agent: Agent, token: str, kill_flag: Path, feed: EventFeed | None
     async def get_status() -> StatusOut:
         acc = agent.last_account
         return StatusOut(
-            autonomy=agent.autonomy, cycles=agent.cycles, aborted=agent.aborted, halts=list(agent.risk.halt_reasons),
+            simulated=agent.simulated, autonomy=agent.autonomy, cycles=agent.cycles, aborted=agent.aborted,
+            halts=list(agent.risk.halt_reasons),
             pending_signals=len(agent.pending), equity=acc.equity if acc else None, balance=acc.balance if acc else None,
             is_demo=acc.is_demo if acc else None,
             positions=[PositionOut(ticket=p.ticket, symbol=p.symbol, side=p.side.value, volume=p.volume, price_open=p.price_open,

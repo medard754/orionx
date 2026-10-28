@@ -92,6 +92,8 @@ function drawSpark(values) {
 }
 
 function renderStatus(s) {
+  $("sim").hidden = !s.simulated;
+  document.title = s.simulated ? "ORIONX · DÉMO SIMULÉE" : "ORIONX Dashboard";
   pill("mode", s.autonomy === "auto" ? "AUTO" : s.autonomy === "semi_auto" ? "semi-auto" : "signaux seuls", s.autonomy === "auto" ? "mode-auto" : "mode");
   if (s.aborted) pill("health", "ARRÊTÉ", "bad");
   else if (s.halts.length) pill("health", "mode sûr", "warn");

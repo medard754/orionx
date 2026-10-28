@@ -75,6 +75,8 @@ body::before { /* grille discrète, façon terminal de marché */
 .pill.warn { color: var(--gold); border-color: rgba(254, 217, 15, .5); box-shadow: 0 0 18px rgba(254, 217, 15, .14); }
 .pill.bad { color: var(--down); border-color: rgba(255, 92, 122, .6); box-shadow: 0 0 22px rgba(255, 92, 122, .25); }
 .pill.mode { color: var(--cyan); }
+.pill.sim { color: #1a1300; background: var(--gold); border-color: var(--gold); box-shadow: 0 0 20px rgba(254, 217, 15, .45); }
+.pill[hidden] { display: none; }
 .pill.mode-auto { color: var(--orange); border-color: rgba(255, 166, 48, .55); }
 @keyframes pulse {
   0% { box-shadow: 0 0 0 0 rgba(1, 247, 244, .7); }

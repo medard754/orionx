@@ -7,6 +7,7 @@
   python -m orionx.main run --api         # T-14 : + API locale (approbation des signaux, état, flux en direct)
   python -m orionx.main run --api --dashboard   # M9 : + ouvre le dashboard dans le navigateur
   python -m orionx.main dashboard         # M9 : rouvre le dashboard d'un agent lancé avec --api
+  python -m orionx.main demo-dashboard    # M9 : démonstration SANS MetaTrader (agent et courtier simulés)
   python -m orionx.main kill --level 3    # arrêt d'urgence depuis un autre terminal
   python -m orionx.main clear-kill        # retire le drapeau d'arrêt d'urgence
   python -m orionx.main audit-verify      # vérifie l'intégrité du journal
@@ -596,7 +597,8 @@ async def h1_cmd(symbol: str, open_holdout: str | None, cfg: AppConfig) -> int:
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="orionx")
     commands = ["simulate", "mt5-check", "demo-trade", "run", "kill", "clear-kill", "audit-verify", "audit-tail",
-                "backtest", "state", "risk-set", "risk-status", "risk-check", "alert-setup", "alert-test", "dashboard"]  # fmt: skip
+                "backtest", "state", "risk-set", "risk-status", "risk-check", "alert-setup", "alert-test", "dashboard",
+                "demo-dashboard"]  # fmt: skip
     parser.add_argument("command", choices=commands)
     parser.add_argument("--yes", action="store_true", help="demo-trade : ne pas demander confirmation")
     parser.add_argument("--hold", type=float, default=10.0, help="demo-trade : secondes avant fermeture")
@@ -656,6 +658,10 @@ def main(argv: list[str] | None = None) -> int:
         return asyncio.run(backtest_cmd(args.symbol, args.bars, args.folds, args.csv, args.filters, args.random_runs, args.strategy, cfg))
     if args.command == "dashboard":
         return dashboard_cmd(args.api_port)
+    if args.command == "demo-dashboard":
+        from orionx.demo_dashboard import run_demo
+
+        return asyncio.run(run_demo(args.api_port))
     if args.command in ("alert-setup", "alert-test"):
         return alert_cmd(args.command, args.visible)
     if args.command == "demo-trade":

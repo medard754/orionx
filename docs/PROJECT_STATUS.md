@@ -50,6 +50,9 @@ Dernière mise à jour : 27 oct. 2026 · Phase : validation M3 à M7 sur MT5 dé
   `GET /api/analysis` (lecture seule, même protection que l'API). Descriptif uniquement : aucun conseil d'achat ou de vente.
   Testé sur simulateur et rendu vérifié (captures) ; **à vérifier sur MT5 démo en journée** (RUNBOOK §12.3 bis).
 
+- [x] **`demo-dashboard`** (28 oct. 2026) : le dashboard sans MetaTrader, sur un agent et un courtier simulés, clairement étiqueté
+  « DÉMO SIMULÉE » et isolé de vos vraies données. Pour voir le rendu, présenter le produit, faire des captures.
+
 ## À faire (ordre recommandé)
 
 | ID | Tâche | Preuve que c'est fini |
