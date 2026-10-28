@@ -118,7 +118,8 @@ class DashboardTests(unittest.IsolatedAsyncioTestCase):
             self.skipTest("node absent : syntaxe JavaScript non vérifiée")
         # Constaté le 28 oct. : une déclaration en double (« money ») aurait empêché tout le dashboard de se charger,
         # sans qu'aucun test Python ne le voie.
-        for js in (STATIC / "app.js", Path(__file__).resolve().parents[2] / "site" / "assets" / "site.js"):
+        site_js = sorted((Path(__file__).resolve().parents[2] / "site" / "assets").rglob("*.js"))
+        for js in (STATIC / "app.js", *site_js):
             if js.exists():
                 r = subprocess.run([node, "--check", str(js)], capture_output=True, text=True, timeout=30)
                 self.assertEqual(r.returncode, 0, f"{js.name} : {r.stderr}")

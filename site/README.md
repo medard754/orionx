@@ -12,7 +12,7 @@ ni ressource externe, aucun traceur. Pour le déployer, on envoie **ce dossier t
 | `a-propos.html` | Mission, principes, état du projet |
 | `contact.html` | Formulaire (prépare un e-mail dans la messagerie du visiteur) |
 | `connexion.html` | « Se connecter » : espace client à venir, tableau de bord local en attendant |
-| `assets/` | Style (`site.css`), script (`site.js`), logo, icône, aperçus du tableau de bord |
+| `assets/` | Style (`site.css`), scripts (`site.js`, `i18n.js`, `core3d.js`), traductions (`i18n/`), logo, icône, aperçus et galerie du tableau de bord |
 
 ## Voir le site sur son PC
 
@@ -59,3 +59,27 @@ N'importe quel hébergement de site statique convient : il suffit de publier le 
 
 Le test `agent/tests/test_site.py` vérifie à chaque modification : liens internes valides, aucune ressource externe,
 avertissement sur les risques sur chaque page, aucun champ de mot de passe.
+
+## Langues (FR, EN, ES)
+
+Le français est la source : c'est le texte écrit dans les pages. Chaque texte traduisible porte un `data-i18n="clé"`
+(ou `data-i18n-attr="alt:clé"` pour un attribut) ; `assets/i18n/en.js` et `es.js` donnent la traduction de chaque clé.
+Le visiteur choisit avec les boutons FR / EN / ES (choix mémorisé, langue du navigateur par défaut, `?lang=en` possible).
+
+- **Modifier un texte** : changer le français dans la page ET sa traduction dans `en.js` et `es.js` (sous la même clé).
+- **Ajouter une langue** : créer `assets/i18n/xx.js` avec toutes les clés, charger le script dans les 5 pages, ajouter
+  `<button data-lang="xx">` dans l'en-tête et `"xx"` dans `LANGS` de `assets/i18n.js`.
+- Les tests (`agent/tests/test_site.py`) vérifient que chaque clé est traduite, qu'aucune traduction n'est orpheline et que les
+  balises (dégradé des titres, ✓) sont conservées. Le tableau de bord de l'agent n'est, lui, pas encore traduit (dit sur le site).
+
+## Section 3D « cœur d'ORIONX »
+
+`assets/core3d.js` dessine, sur un `<canvas>`, un réseau neuronal en 3D (projection en perspective écrite à la main, sans
+bibliothèque) entouré d'un périmètre de contrôle du risque : des impulsions (idées de l'IA) le traversent (validées, vert) ou s'y
+heurtent (refusées, orange). Illustration pure : aucune donnée de marché, aucun appel réseau. L'animation s'arrête hors écran, onglet
+masqué, et reste fixe si le système demande moins de mouvement (`prefers-reduced-motion`).
+
+## Mettre à jour les captures du tableau de bord
+
+Les images `apercu-*.png` et `galerie-*.png` viennent de `demo-dashboard` (agent et courtier simulés) : lancer le dashboard de
+démonstration, capturer avec Edge en mode sans fenêtre, puis recadrer. Refaire les captures à chaque changement visible du dashboard.
