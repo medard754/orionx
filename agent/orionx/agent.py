@@ -39,6 +39,7 @@ from orionx.core.events import (
     CircuitBreakerTripped,
     DecisionNote,
     MarketStateUpdated,
+    SignalContext,
     ThesisDegraded,
     TradeApproved,
     TradeProposed,
@@ -439,6 +440,10 @@ class Agent:
             return
         rep.signals += 1
         await self.bus.publish(TradeProposed(proposal))
+        anchor = self._last_bar.get(proposal.symbol)
+        if anchor is not None and self.engine is not None:
+            entry = tick.ask if proposal.side is Side.BUY else tick.bid
+            await self.bus.publish(SignalContext(proposal.id, proposal.symbol, self.engine.timeframe, anchor, entry, tick.spread))
         decision = self.risk.evaluate(proposal, tick, acc, positions, self.specs)
         if not decision.approved or decision.order is None:
             await self.bus.publish(TradeRejected(proposal.id, decision.reasons))

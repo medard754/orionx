@@ -68,6 +68,11 @@ Dernière mise à jour : 27 oct. 2026 · Phase : validation M3 à M7 sur MT5 dé
   journal d'audit, `signals_only` refusé, 3 tickets au plus, expiration 10 min). L'agent n'a pas d'avis sur la direction. Démo uniquement ;
   chemin vers un usage réel prudent (docs/validation, RUNBOOK §13).
 
+- [x] **`signals-report`** (28 oct. 2026, essai V-4) : chaque signal est maintenant journalisé avec son prix d'entrée et sa bougie d'ancrage
+  (`SignalContext`) ; la commande rejoue les signaux sur les bougies suivantes (premier contact stop/objectif, vente payée à l'ask, coût en pips,
+  stop prioritaire si les deux sont touchés), donne taux de réussite, gain moyen en R avec incertitude et facteur de profit, **refuse de conclure sous 30 signaux
+  résolus** et rappelle que ce n'est pas une preuve. Lecture seule, aucun ordre. Règles posées avant de voir les résultats.
+
 ## À faire (ordre recommandé)
 
 | ID | Tâche | Preuve que c'est fini |
@@ -75,7 +80,7 @@ Dernière mise à jour : 27 oct. 2026 · Phase : validation M3 à M7 sur MT5 dé
 | V-1 | Dérouler `RUNBOOK_VALIDATION.md` étapes 1 à 4 sur le démo (journal, arrêt d'urgence) | Sorties et captures archivées dans `docs/validation/` |
 | V-2 | Revue du code `risk/`, `execution/`, `monitoring/`, `positions/` : `/code-review` puis relecture personnelle 24 h plus tard (ADR 0004). **27 oct. : revue faite, 9 corrections + ADR 0005 sur la PR #1 ; reste la relecture personnelle** | Remarques tracées dans la PR et traitées |
 | V-3 | ~~Backtest + walk-forward + trades perdants~~ : fait le 27 oct., **NO-GO** (`docs/validation/H-1_protocole.md` §9) | — |
-| V-4 | Une semaine de `run` en signaux seuls (aucun ordre) ; comparer les signaux au graphique | Journal d'audit de la semaine, signaux revus |
+| V-4 | Une semaine de `run` en signaux seuls (aucun ordre), puis `signals-report` (rejeu des signaux sur les bougies suivantes, RUNBOOK §14). **Outil codé et testé le 28 oct. ; reste à laisser tourner la semaine** | Rapport archivé dans `docs/validation/`, ≥ 30 signaux résolus |
 | T-09 | ~~Règles de risque manquantes~~ : faites (M5). Reste : corrélations entre devises plus fines | — |
 | H-1 | ~~Comparer les filtres~~ : fait, 4 échecs sur 5. **Reste 1 hypothèse** avant l'arrêt de `trend_pullback`. Ne pas la dépenser sans y réfléchir : la réserve est encore vierge | Décision du propriétaire : 5e hypothèse, ou nouvelle stratégie (protocole H-2) |
 | T-10 | ~~`ruff` et `mypy --strict` bloquants dans la CI~~ : fait le 27 oct. (0 erreur, 0 `type: ignore` ajouté) | — |
