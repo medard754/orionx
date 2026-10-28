@@ -127,6 +127,10 @@ Si le navigateur se ferme : `python -m orionx.main dashboard` (dossier `agent`) 
 sur les événements ; arrêter MT5 doit faire passer la pastille en « mode sûr » puis les événements de reconnexion s'afficher.
 **12.3 Signal** : à l'arrivée d'un signal, il apparaît avec Approuver / Rejeter ; une confirmation est demandée ; l'approbation envoie
 un ordre démo avec stop et objectif, la position apparaît dans « Positions ouvertes ». Un signal expiré ne peut pas être approuvé.
+**12.3 bis Analyse du marché** : la section « Analyse du marché » a 6 onglets (Tendance, Momentum, Volatilité, Niveaux, Séance et
+annonces, Décision de l'agent) ; chacun commence par une phrase de lecture. Vérifier que le régime affiché correspond au journal
+(`MarketStateUpdated`), que le RSI et le graphique suivent le marché (comparer avec MT5), que les annonces du calendrier
+apparaissent (§8.5), et que « Décision » liste les stratégies applicables. Liens directs : `/#momentum`, `/#decision`…
 **12.4 Arrêt d'urgence** : bouton niveau 1 + confirmation -> alerte Telegram et pastille « mode sûr » au cycle suivant ; `clear-kill` ensuite.
 **12.5 Sécurité** : copier l'adresse du dashboard dans un autre navigateur (sans cookie) -> « Session expirée ». Relancer
 `dashboard` -> le nouveau code fonctionne UNE fois (le recoller dans l'adresse échoue).

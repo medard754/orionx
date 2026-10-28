@@ -51,6 +51,26 @@
       </article>
     </section>
 
+    <section class="card span-12" aria-labelledby="t-analysis">
+      <div class="card-head">
+        <h2 id="t-analysis">Analyse du marché</h2>
+        <select id="an-symbol" class="select" aria-label="Symbole analysé"></select>
+        <span class="hint" id="an-updated">calculée par l'agent sur les bougies H1</span>
+      </div>
+      <div class="tabs" role="tablist" aria-label="Types d'analyse">
+        <button type="button" role="tab" class="tab" id="tab-trend" data-tab="trend" aria-selected="true" aria-controls="an-panel">Tendance</button>
+        <button type="button" role="tab" class="tab" id="tab-momentum" data-tab="momentum" aria-selected="false" aria-controls="an-panel" tabindex="-1">Momentum</button>
+        <button type="button" role="tab" class="tab" id="tab-volatility" data-tab="volatility" aria-selected="false" aria-controls="an-panel" tabindex="-1">Volatilité</button>
+        <button type="button" role="tab" class="tab" id="tab-levels" data-tab="levels" aria-selected="false" aria-controls="an-panel" tabindex="-1">Niveaux</button>
+        <button type="button" role="tab" class="tab" id="tab-session" data-tab="session" aria-selected="false" aria-controls="an-panel" tabindex="-1">Séance et annonces</button>
+        <button type="button" role="tab" class="tab" id="tab-decision" data-tab="decision" aria-selected="false" aria-controls="an-panel" tabindex="-1">Décision de l'agent</button>
+      </div>
+      <div id="an-panel" class="tab-panel" role="tabpanel" aria-labelledby="tab-trend" tabindex="0">
+        <p class="empty-panel">En attente de la première analyse…</p>
+      </div>
+      <p class="hint disclaimer">Lecture automatique de l'état du marché, pas un conseil en investissement. Aucune stratégie n'a encore démontré d'avantage statistique.</p>
+    </section>
+
     <section class="card span-8" aria-labelledby="t-signals">
       <div class="card-head">
         <h2 id="t-signals">Signaux en attente</h2>

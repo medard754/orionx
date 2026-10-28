@@ -215,6 +215,11 @@ def create_app(agent: Agent, token: str, kill_flag: Path, feed: EventFeed | None
                           rationale=list(p.rationale), valid_until=p.valid_until, expired=p.valid_until <= now)
                 for p in agent.pending.values()]  # fmt: skip
 
+    @app.get("/api/analysis", dependencies=auth)
+    async def analysis() -> list[dict[str, Any]]:
+        """Analyse de marché de chaque symbole (tendance, momentum, volatilité, niveaux, séance, décision). Lecture seule."""
+        return agent.analysis()
+
     @app.post("/api/signals/{proposal_id}/approve", dependencies=auth)
     async def approve(proposal_id: str) -> DecisionOut:
         res = await agent.approve(proposal_id, via="api")
