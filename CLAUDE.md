@@ -23,7 +23,7 @@ Code du projet : `agent/orionx/` · tests : `agent/tests/` · docs : `docs/` (li
 - Windows, Python 3.12, venv dans `agent/.venv` ; installation : `pip install -e ".[dev,mt5]"`.
 - MT5 : compte **démo Hedging**, terminal déjà connecté (pas d'identifiants dans le code). Magic number `ORIONX_MAGIC = 261012`.
 - Dépôt Windows : `C:\Users\medar\Documents\orionx\orionx\` (code dans `agent`).
-- Tests (208 sur simulateur) : `python -m unittest discover -s tests -t .` depuis `agent/`.
+- Tests (222 sur simulateur) : `python -m unittest discover -s tests -t .` depuis `agent/`.
 - Commandes `python -m orionx.main` : simulate, mt5-check, demo-trade, run, kill, clear-kill, audit-verify, audit-tail, backtest, state, risk-set, risk-status, risk-check.
 - Config : copier `config.example.yaml` en `config.yaml` (jamais versionné) ; ne pas dupliquer la section `risk:`.
 
@@ -43,7 +43,7 @@ Code du projet : `agent/orionx/` · tests : `agent/tests/` · docs : `docs/` (li
 | M11 Comptes, licences, paiements | non codé |
 
 ## Faits clés
-- **Aucun avantage statistique démontré** : backtest EURUSD H1, 15000 barres, 624 trades, PF 0,90, drawdown 25 %, meilleur que 60 % des tirages aléatoires seulement.
+- **Aucun avantage statistique démontré** : H-1/V-3 du 27 oct. 2026 = NO-GO (EURUSD H1, 26 855 barres de développement, `none` PF 0,86, drawdown 44,7 %, meilleur que 12 % des tirages aléatoires ; `vol`, `session`, `trend`, `all` échouent aussi). 4 échecs sur 5 ; réserve de 6 mois jamais ouverte. Voir `docs/validation/H-1_protocole.md` §9.
 - Le compte MetaQuotes-Demo n'a ni spread ni commission : les résultats y sont trop optimistes.
 - Weekend : `weekend_guard` bloque les entrées à partir du vendredi 18h UTC ; les tests de marché demandent un marché ouvert.
 - Retcodes MT5 : 10004/10020/10021 réessai sûr ; 10012/10031 ambigus (ne jamais renvoyer, chercher la position par commentaire `orionx:<proposal_id>`) ; 10027 trading algo désactivé ; 10030 mode de remplissage.
@@ -57,6 +57,6 @@ Code du projet : `agent/orionx/` · tests : `agent/tests/` · docs : `docs/` (li
 ## Reste à faire
 1. Valider M3 à M7 sur MT5 démo (`docs/RUNBOOK_VALIDATION.md` §8, tests 1 à 7).
 2. Committer le travail non versionné (analysis, decision, risk/guard, riskcheck, stratégies, tests) après les tests.
-3. Revue V-2 (`/code-review` + relecture différée, ADR 0004), walk-forward V-3, semaine de signaux seuls V-4.
+3. Relecture personnelle de la PR (ADR 0004). V-3/H-1 faits (NO-GO) ; V-4 seulement comme test de plomberie. Décider de la 5e hypothèse ou d'une nouvelle stratégie (H-2, nouveau protocole pré-enregistré).
 4. T-10 ruff/mypy bloquants, T-11 coffre Windows pour les identifiants, T-13 reconnexion MT5, T-14 API locale (FastAPI + WebSocket).
 5. M8 alertes, puis M9 dashboard, puis M11. Couche IA seulement après mesures. Prévoir un compte démo avec spreads réels.

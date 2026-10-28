@@ -18,10 +18,13 @@ Dernière mise à jour : 27 oct. 2026 · Phase : validation M3 à M7 sur MT5 dé
   (`RUNBOOK_VALIDATION.md` §6 bis).
 - [!] Backtest EURUSD H1 sur 15 000 bougies (14 oct.) : PF 0,90, net -1 920 $, équivalent au hasard (60e centile). Aucun
   avantage démontré : l'exécution automatique reste verrouillée.
+- [!] **H-1/V-3 terminé : NO-GO** (27 oct. 2026). Protocole pré-enregistré, 26 855 bougies de développement (2021-2026), 4 blocs,
+  40 tirages aléatoires : `none` PF 0,86 / DD 44,7 % ; `vol`, `session`, `trend`, `all` échouent tous aux critères. Réserve de 6 mois
+  **jamais ouverte**. 4 échecs sur 5 autorisés. Détail : `docs/validation/H-1_protocole.md` §9.
 
 - [x] **M4 à M7 complétés** (16 oct. 2026) : moteur de décision (3 stratégies, régimes, conflits, classement par devise),
   risque (exposition par devise, week-end, profils, verrouillage 24 h, mode sûr), exécution (tentatives sûres, réponses
-  ambiguës, glissement, qualité), positions (ATR, week-end, annonces, positions manuelles). 208 tests sur simulateur.
+  ambiguës, glissement, qualité), positions (ATR, week-end, annonces, positions manuelles). 222 tests sur simulateur.
   **À valider sur MT5** : `RUNBOOK_VALIDATION.md` §8. Détail : `docs/MODULES_M4_M7.md`.
 
 ## À faire (ordre recommandé)
@@ -30,10 +33,10 @@ Dernière mise à jour : 27 oct. 2026 · Phase : validation M3 à M7 sur MT5 dé
 |---|---|---|
 | V-1 | Dérouler `RUNBOOK_VALIDATION.md` étapes 1 à 4 sur le démo (journal, arrêt d'urgence) | Sorties et captures archivées dans `docs/validation/` |
 | V-2 | Revue du code `risk/`, `execution/`, `monitoring/`, `positions/` : `/code-review` puis relecture personnelle 24 h plus tard (ADR 0004). **27 oct. : revue faite, 9 corrections + ADR 0005 sur la PR #1 ; reste la relecture personnelle** | Remarques tracées dans la PR et traitées |
-| V-3 | Backtest sur 3000+ bougies puis walk-forward sur plusieurs périodes ; analyser les trades perdants | Rapport court : résultats, limites, décision go / no-go |
+| V-3 | ~~Backtest + walk-forward + trades perdants~~ : fait le 27 oct., **NO-GO** (`docs/validation/H-1_protocole.md` §9) | — |
 | V-4 | Une semaine de `run` en signaux seuls (aucun ordre) ; comparer les signaux au graphique | Journal d'audit de la semaine, signaux revus |
 | T-09 | ~~Règles de risque manquantes~~ : faites (M5). Reste : corrélations entre devises plus fines | — |
-| H-1 | Chantier stratégie : comparer les filtres `vol`, `session`, `trend`, `all` ; 6 derniers mois mis de côté ; arrêt après 5 hypothèses | Tableau RÉSUMÉ du backtest archivé + décision go / no-go |
+| H-1 | ~~Comparer les filtres~~ : fait, 4 échecs sur 5. **Reste 1 hypothèse** avant l'arrêt de `trend_pullback`. Ne pas la dépenser sans y réfléchir : la réserve est encore vierge | Décision du propriétaire : 5e hypothèse, ou nouvelle stratégie (protocole H-2) |
 | T-10 | `ruff` et `mypy --strict` bloquants dans la CI (le code n'a pas encore été passé au linter) | CI verte sans `continue-on-error` |
 | T-11 | Identifiants dans le coffre-fort Windows (`keyring`) | Plus aucun mot de passe en clair |
 | T-13 | Reconnexion automatique du terminal MT5 après coupure (aujourd'hui : mode safe, pas de reconnexion) | Test de coupure sur démo |
