@@ -10,6 +10,41 @@ const CRITICAL = new Set(["AccountChanged", "KillSwitchActivated", "CircuitBreak
 const IMPORTANT = new Set(["OrderFilled", "PositionClosed", "PositionAdjusted", "GatewayReconnected", "GatewayRecovered",
   "GatewayReconnectFailed", "DataStale", "DataFrozen", "RiskConfigChanged", "SignalApproval", "SignalRejectedByUser", "TradeRejected"]);
 let sessionLost = false;
+
+// --- Mode débutant : explications simples, montants en jeu, glossaire ---------------------------------
+let beginner = true;
+try { const saved = localStorage.getItem("orionx_beginner"); if (saved !== null) beginner = saved === "1"; } catch (_) { /* stockage indisponible : débutant par défaut */ }
+function applyBeginner() {
+  document.body.classList.toggle("beginner", beginner);
+  $("beginner").setAttribute("aria-checked", String(beginner));
+}
+const GLOSSARY = {
+  "Régime": "Le type de marché du moment : tendance (le prix monte ou baisse durablement), range (il oscille sans direction) ou forte volatilité (il s'agite).",
+  "EMA 20": "Moyenne mobile exponentielle sur 20 bougies : le prix moyen des dernières heures, qui réagit vite aux changements.",
+  "EMA 50": "Comme l'EMA 20 mais sur 50 bougies : plus lente, elle montre la direction de fond.",
+  "Pente EMA 20": "Vitesse à laquelle l'EMA 20 monte ou baisse. Positive : le prix moyen monte ; négative : il baisse.",
+  "Force (ATR)": "Écart entre l'EMA 20 et l'EMA 50, mesuré en ATR. Plus il est grand, plus la tendance est nette.",
+  "Efficacité": "De 0 à 1. Près de 1 : le prix avance en ligne droite. Près de 0 : il zigzague sans vraiment avancer.",
+  "RSI 14": "Mesure l'élan récent de 0 à 100. Au-dessus de 70 : montée rapide (« suracheté »). Sous 30 : chute rapide (« survendu »). Ce n'est pas un ordre d'acheter ou de vendre.",
+  "Zone": "Où se situe le RSI : neutre, suracheté (monté très vite) ou survendu (descendu très vite).",
+  "Variation 24 h": "De combien le prix a bougé sur les dernières 24 heures. 1 pip = 0,0001 sur l'EURUSD.",
+  "ATR 14": "Amplitude moyenne d'une bougie d'une heure, en pips : mesure à quel point le marché s'agite.",
+  "ATR / médiane": "Compare l'agitation actuelle à l'agitation habituelle. 1 = normal ; 2 = deux fois plus agité que d'habitude.",
+  "Seuil de blocage": "Au-dessus de cette valeur, l'agent n'ouvre plus aucun trade, par prudence.",
+  "Largeur Bollinger": "Largeur des bandes de Bollinger (une enveloppe autour du prix) : large = marché agité, étroite = marché calme.",
+  "%B Bollinger": "Position du prix dans son enveloppe : 0 = collé à la bande basse, 1 = collé à la bande haute.",
+  "Résistance 1": "Niveau calculé où le prix a tendance à buter quand il monte.",
+  "Résistance 2": "Résistance plus éloignée.",
+  "Support 1": "Niveau calculé où le prix a tendance à rebondir quand il baisse.",
+  "Support 2": "Support plus éloigné.",
+  "Pivot": "Niveau moyen de la période, calculé avec le plus haut, le plus bas et la dernière clôture.",
+  "Plus haut 24 h": "Le prix le plus élevé atteint sur les 24 dernières heures.",
+  "Plus bas 24 h": "Le prix le plus bas atteint sur les 24 dernières heures.",
+  "Séance": "La période de marché en cours (Asie, Londres, New York). La liquidité et les mouvements diffèrent selon la séance.",
+  "Spread": "Écart entre le prix d'achat et le prix de vente : c'est le coût d'entrée de tout trade.",
+  "Fenêtre d'annonce": "Autour d'une annonce économique majeure, les prix peuvent faire de brusques écarts : l'agent n'ouvre alors aucun trade.",
+  "Annonces 24 h": "Nombre d'annonces économiques importantes prévues dans les prochaines 24 heures.",
+};
 const equityHistory = []; // équité vue à chaque rafraîchissement (en mémoire seulement, perdue au rechargement)
 const last = {};
 
@@ -137,9 +172,16 @@ function renderStatus(s) {
   $("updated").textContent = `mis à jour ${new Date().toLocaleTimeString("fr-FR")}`;
 }
 
-async function decide(id, action, button) {
-  const verb = action === "approve" ? "APPROUVER (un ordre démo sera envoyé si le risque l'accepte)" : "rejeter";
-  if (!window.confirm(`Voulez-vous ${verb} ce signal ?`)) return;
+const cash = (v, cur) => (v === null || v === undefined ? "—" : `${money(v)} ${cur || ""}`.trim());
+
+async function decide(id, action, button, signal) {
+  const pv = (signal && signal.preview) || {};
+  let question = `Voulez-vous ${action === "approve" ? "APPROUVER (un ordre démo sera envoyé si le risque l'accepte)" : "rejeter"} ce signal ?`;
+  if (action === "approve" && pv.would_approve && pv.risk_cash !== null && pv.risk_cash !== undefined) {
+    question = `Vous risquez au maximum ${cash(pv.risk_cash, pv.currency)} (${fmt(pv.risk_pct, 3)} % du capital) si le stop-loss est touché, `
+      + `pour viser ${cash(pv.reward_cash, pv.currency)}. Taille : ${pv.volume} lot.\n\nApprouver ce signal ?`;
+  }
+  if (!window.confirm(question)) return;
   button.disabled = true;
   try {
     const r = await api(`/api/signals/${encodeURIComponent(id)}/${action}`, { method: "POST", headers: CSRF });
@@ -148,6 +190,36 @@ async function decide(id, action, button) {
     window.alert(`Échec : ${e.message}`);
   }
   refresh();
+}
+
+function stakeBox(title, value, note, cls) {
+  const box = el("div", null, `box ${cls || ""}`);
+  box.append(el("span", title), el("strong", value), el("em", note));
+  return box;
+}
+
+function explainRow(s) {
+  const tr = el("tr", null, "explain-row");
+  const td = el("td"); td.colSpan = 7;
+  const box = el("div", null, "explain");
+  const pv = s.preview || {};
+  const stake = el("div", null, "stake");
+  if (pv.would_approve && pv.risk_cash !== null && pv.risk_cash !== undefined) {
+    stake.append(
+      stakeBox("Vous risquez au maximum", cash(pv.risk_cash, pv.currency), `${fmt(pv.risk_pct, 3)} % du capital, si le stop-loss est touché`, "loss"),
+      stakeBox("Vous pouvez gagner", cash(pv.reward_cash, pv.currency), `si l'objectif est atteint · ${fmt(pv.rr, 1)} pour 1`, "gain"),
+      stakeBox("Taille de la position", `${pv.volume} lot`, "calculée par le gestionnaire de risques"),
+      el("div", "Le gestionnaire de risques accepterait ce trade maintenant.", "verdict yes"));
+  } else {
+    stake.append(el("div", "Le gestionnaire de risques refuserait ce trade en ce moment.", "verdict no"));
+  }
+  const why = el("div", null, "why");
+  why.append(el("h4", "Pourquoi ce signal ?"));
+  const causes = new Set(pv.reasons_fr || []);
+  for (const line of s.explain || []) why.append(el("p", line, line.startsWith("Rappel") ? "edge" : causes.has(line) ? "cause" : ""));
+  box.append(stake, why);
+  td.append(box); tr.append(td);
+  return tr;
 }
 
 function renderSignals(list) {
@@ -162,15 +234,17 @@ function renderSignals(list) {
     const box = el("div", null, "actions");
     const ok = el("button", "Approuver", "btn btn-approve"); ok.type = "button"; ok.disabled = s.expired;
     const no = el("button", "Rejeter", "btn btn-ghost"); no.type = "button";
-    ok.addEventListener("click", () => decide(s.id, "approve", ok));
-    no.addEventListener("click", () => decide(s.id, "reject", no));
+    ok.addEventListener("click", () => decide(s.id, "approve", ok, s));
+    no.addEventListener("click", () => decide(s.id, "reject", no, s));
+    const pvk = s.preview || {};
+    ok.title = pvk.would_approve && pvk.risk_cash !== null && pvk.risk_cash !== undefined ? `Risque maximal : ${cash(pvk.risk_cash, pvk.currency)}` : "Le risque refuserait ce trade maintenant";
     box.append(ok, no);
     actions.append(box);
     const side = el("td"); side.append(el("span", s.side === "buy" ? "ACHAT" : "VENTE", `badge ${s.side}`));
     tr.append(el("td", s.symbol, "sym"), side, el("td", price(s.sl), "num"), el("td", price(s.tp), "num"),
       el("td", s.strategy), el("td", s.expired ? "expiré" : time(s.valid_until), s.expired ? "neg" : "num"), actions);
     tr.title = s.rationale.join(" · ");
-    body.append(tr);
+    body.append(tr, explainRow(s));
   }
 }
 
@@ -224,7 +298,11 @@ const px = price;
 
 function metric(label, value, cls) {
   const box = el("div", null, "metric");
-  box.append(el("span", label), el("strong", value, cls));
+  const help = GLOSSARY[label];
+  const name = el("span");
+  if (help) { const a = el("abbr", label); a.title = help; name.append(a); } else name.textContent = label;
+  box.append(name, el("strong", value, cls));
+  if (help) box.append(el("small", help)); // visible seulement en mode débutant
   return box;
 }
 
@@ -399,6 +477,13 @@ for (const t of tabs) t.addEventListener("click", () => history.replaceState(nul
 if (tabFromHash()) selectTab(tabFromHash(), false);
 refreshAnalysis();
 setInterval(refreshAnalysis, 5000);
+
+$("beginner").addEventListener("click", () => {
+  beginner = !beginner;
+  try { localStorage.setItem("orionx_beginner", beginner ? "1" : "0"); } catch (_) { /* tant pis : le choix ne sera pas mémorisé */ }
+  applyBeginner();
+});
+applyBeginner();
 
 for (const b of document.querySelectorAll(".kill button")) b.addEventListener("click", () => kill(Number(b.dataset.level)));
 refresh();

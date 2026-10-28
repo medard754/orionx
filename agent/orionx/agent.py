@@ -28,6 +28,7 @@ from orionx.analysis.snapshot import StrategyInfo, build_snapshot
 from orionx.analysis.state import MarketState, Regime, analyze, session_of
 from orionx.analysis.thesis import ThesisMonitor
 from orionx.analysis.tzutil import estimate_offset, server_to_utc_eet
+from orionx.api.explain import build_preview
 from orionx.api.feed import EventFeed, attach_feed
 from orionx.audit.log import AuditLog, attach
 from orionx.connector_mt5.gateway import Gateway
@@ -164,6 +165,15 @@ class Agent:
                 notes_at=notes_at, theses=[(p.ticket, self.thesis.current(p.ticket)) for p in self.last_positions if p.symbol == sym],
             ))  # fmt: skip
         return out
+
+    def preview_signal(self, proposal: TradeProposal) -> dict[str, Any]:
+        """Ce que le risque ferait de ce signal maintenant, avec les montants en jeu. Lecture seule : n'envoie ni n'enregistre rien."""
+        tick, acc, spec = self.market.last.get(proposal.symbol), self.last_account, self.specs.get(proposal.symbol)
+        if tick is None or acc is None or spec is None:
+            wait = "Pas encore de prix ou de compte lu : réessayez dans un instant."
+            return {"available": False, "would_approve": False, "reasons_fr": [wait]}
+        decision = self.risk.evaluate(proposal, tick, acc, self.last_positions, self.specs)
+        return build_preview(decision, proposal.side, tick, spec, acc)
 
     def now(self) -> datetime:
         """Horloge de l'agent (UTC) : celle qui juge l'expiration des signaux."""

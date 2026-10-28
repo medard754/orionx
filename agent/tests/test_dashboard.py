@@ -109,6 +109,20 @@ class DashboardTests(unittest.IsolatedAsyncioTestCase):
             self.assertTrue(r.content.startswith(b"\x89PNG"), path)
             self.assertLess(len(r.content), 300_000, f"{path} : image trop lourde pour une page locale")
 
+    def test_javascript_files_have_valid_syntax(self) -> None:
+        import shutil
+        import subprocess
+
+        node = shutil.which("node")
+        if node is None:
+            self.skipTest("node absent : syntaxe JavaScript non vérifiée")
+        # Constaté le 28 oct. : une déclaration en double (« money ») aurait empêché tout le dashboard de se charger,
+        # sans qu'aucun test Python ne le voie.
+        for js in (STATIC / "app.js", Path(__file__).resolve().parents[2] / "site" / "assets" / "site.js"):
+            if js.exists():
+                r = subprocess.run([node, "--check", str(js)], capture_output=True, text=True, timeout=30)
+                self.assertEqual(r.returncode, 0, f"{js.name} : {r.stderr}")
+
     def test_dashboard_script_never_injects_html(self) -> None:
         js = (STATIC / "app.js").read_text(encoding="utf-8")
         for forbidden in ("innerHTML", "outerHTML", "insertAdjacentHTML", "document.write", "eval("):

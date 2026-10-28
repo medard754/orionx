@@ -243,8 +243,40 @@ code { font-family: var(--mono); font-size: 12px; color: var(--cyan); background
 .disclaimer { margin: 16px 0 0; }
 .empty-panel { color: var(--muted); font-style: italic; margin: 8px 0; }
 
+/* --- mode débutant ------------------------------------------------------------------------ */
+.switch { display: inline-flex; align-items: center; gap: 10px; font: inherit; font-size: 13px; font-weight: 600; color: var(--silver); cursor: pointer;
+  background: var(--surface-2); border: 1px solid var(--line-strong); border-radius: 999px; padding: 5px 14px 5px 6px; }
+.switch .knob { position: relative; width: 34px; height: 20px; border-radius: 999px; background: rgba(138, 154, 178, .35); transition: background .2s; }
+.switch .knob::after { content: ""; position: absolute; top: 3px; left: 3px; width: 14px; height: 14px; border-radius: 50%; background: var(--text); transition: transform .2s; }
+.switch[aria-checked="true"] .knob { background: linear-gradient(120deg, var(--teal), var(--cyan)); box-shadow: 0 0 12px rgba(0, 217, 248, .5); }
+.switch[aria-checked="true"] .knob::after { transform: translateX(14px); background: #021022; }
+.switch:focus-visible { outline: 2px solid var(--cyan); outline-offset: 2px; }
+.help, .metric small, .explain-row { display: none; }
+body.beginner .help { display: block; margin: 8px 0 0; font-size: 12px; line-height: 1.45; color: var(--muted); }
+body.beginner .help.block { margin: 12px 0 0; }
+body.beginner .metric small { display: block; margin-top: 6px; font-size: 11.5px; line-height: 1.4; color: var(--muted); font-weight: 400; }
+body.beginner .tile { padding-bottom: 14px; }
+body.beginner .tile-equity { padding-bottom: 70px; }
+body.beginner .explain-row { display: table-row; }
+.explain-row td { white-space: normal; padding: 0 10px 18px; border-bottom: 1px solid var(--line); }
+.explain { display: grid; gap: 14px; grid-template-columns: minmax(230px, 1fr) 2fr; padding: 14px; border-radius: 12px; background: var(--surface-2); border: 1px solid var(--line); }
+.stake { display: grid; gap: 10px; align-content: start; }
+.stake .box { padding: 10px 12px; border-radius: 10px; border: 1px solid var(--line); background: rgba(2, 8, 20, .4); }
+.stake .box span { display: block; font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+.stake .box strong { display: block; margin-top: 2px; font-size: 20px; font-variant-numeric: tabular-nums; }
+.stake .loss strong { color: var(--down); } .stake .gain strong { color: var(--up); }
+.stake .box em { font-style: normal; font-size: 12px; color: var(--muted); }
+.stake .verdict { font-size: 13px; padding: 9px 12px; border-radius: 10px; border: 1px solid var(--line-strong); }
+.stake .verdict.yes { color: var(--teal); border-color: rgba(1, 247, 244, .45); } .stake .verdict.no { color: var(--gold); border-color: rgba(254, 217, 15, .45); }
+.why h4 { margin: 0 0 8px; font-size: 14px; }
+.why p { margin: 0 0 9px; font-size: 13.5px; line-height: 1.55; color: var(--text); }
+.why p.edge { color: var(--gold); font-size: 12.5px; }
+.why p.cause { padding-left: 12px; border-left: 2px solid var(--gold); color: var(--silver); }
+abbr[title] { text-decoration: underline dotted rgba(0, 217, 248, .6); text-underline-offset: 3px; cursor: help; }
+
 /* --- écrans étroits ----------------------------------------------------------------- */
 @media (max-width: 1100px) {
+  .explain { grid-template-columns: 1fr; }
   .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .tile-equity { grid-column: 1 / -1; }
   .span-8, .span-4 { grid-column: 1 / -1; }

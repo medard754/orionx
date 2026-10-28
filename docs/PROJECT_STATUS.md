@@ -53,6 +53,11 @@ Dernière mise à jour : 27 oct. 2026 · Phase : validation M3 à M7 sur MT5 dé
 - [x] **`demo-dashboard`** (28 oct. 2026) : le dashboard sans MetaTrader, sur un agent et un courtier simulés, clairement étiqueté
   « DÉMO SIMULÉE » et isolé de vos vraies données. Pour voir le rendu, présenter le produit, faire des captures.
 
+- [x] **Dashboard : mode débutant** (28 oct. 2026) : bascule « Mode débutant » (activée par défaut), glossaire en langage simple sur chaque
+  indicateur, et pour chaque signal une carte « Pourquoi ce signal ? » avec les montants en jeu (perte maximale, gain visé, taille du lot,
+  % du capital) calculés à blanc par le gestionnaire de risques (aucun ordre), le verdict du risque en phrases, et le rappel « aucun
+  avantage démontré ». La confirmation d'approbation reprend ces montants. Descriptif, jamais de conseil d'achat ou de vente.
+
 ## À faire (ordre recommandé)
 
 | ID | Tâche | Preuve que c'est fini |
