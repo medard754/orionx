@@ -26,6 +26,7 @@ from orionx.analysis.calendar import EconomicCalendar
 from orionx.analysis.state import MarketState, Regime, analyze, session_of
 from orionx.analysis.thesis import ThesisMonitor
 from orionx.analysis.tzutil import estimate_offset, server_to_utc_eet
+from orionx.api.feed import EventFeed, attach_feed
 from orionx.audit.log import AuditLog, attach
 from orionx.connector_mt5.gateway import Gateway
 from orionx.core.bus import EventBus
@@ -85,6 +86,7 @@ class Agent:
         allow_auto: bool = False,
         kill_flag: str | Path | None = None,
         alerts: AlertRouter | None = None,
+        feed: EventFeed | None = None,
         clock: Callable[[], datetime] = utcnow,
     ) -> None:
         self.gw, self.cfg, self._audit, self._flag = gateway, cfg, audit, kill_flag
@@ -96,6 +98,9 @@ class Agent:
         if audit:
             attach(self.bus, audit)
         self._alerts = alerts
+        self._feed = feed
+        if feed:
+            attach_feed(self.bus, feed)
         if alerts:
             attach_alerts(self.bus, alerts)
         self._clock, self.calendar = clock, calendar
@@ -122,6 +127,8 @@ class Agent:
         self._errors = 0
         self._ok_streak = 0
         self.cycles = 0
+        self.last_account: AccountState | None = None  # derniers états vus : exposés par l'API locale
+        self.last_positions: list[Position] = []
         self.aborted: str | None = None  # raison de l'arrêt définitif (compte changé) ; None tant que l'agent peut tourner
         self._login: int | None = None  # compte du premier démarrage : référence pour toute la vie de l'agent
         self._reconnect_attempts = 0
@@ -133,6 +140,10 @@ class Agent:
         return server_time - self.server_offset if self.server_offset is not None else server_to_utc_eet(server_time)
 
     def _now_utc(self) -> datetime:
+        return self._clock()
+
+    def now(self) -> datetime:
+        """Horloge de l'agent (UTC) : celle qui juge l'expiration des signaux."""
         return self._clock()
 
     def _blackout_title(self, symbol: str, now: datetime) -> str | None:
@@ -198,6 +209,8 @@ class Agent:
             self._audit.append(kind, payload)
         if self._alerts:  # ne lève jamais, ne bloque jamais (envoi dans un fil dédié)
             self._alerts.handle(kind, payload)
+        if self._feed:  # flux en direct de l'API locale (non bloquant)
+            self._feed.handle(kind, payload)
 
     # --- cycle de vie -----------------------------------------------------------------
     async def start(self) -> None:
@@ -250,8 +263,10 @@ class Agent:
             self._apply_due_risk_change()
             acc = await self.gw.get_account()
             self._check_account(acc)  # avant toute lecture ou action sur les positions
+            self.last_account = acc
             self.risk.on_account_update(acc)
             positions = await self.gw.get_positions()
+            self.last_positions = positions
             self._detect_closed(positions)
             await self._ensure_symbols(positions)
             await self.market.poll()
@@ -349,8 +364,21 @@ class Agent:
             self._log("SignalOnly", {"proposal": proposal, "score": cand.score, "rr": cand.rr,
                                      "strategies": cand.strategies, "notes": decision.notes})  # fmt: skip
 
-    async def approve(self, proposal_id: str) -> OrderResult:
-        """Approbation humaine (semi_auto) : le risque est RE-ÉVALUÉ avec les prix du moment."""
+    async def approve(self, proposal_id: str, via: str = "programme") -> OrderResult:
+        """Approbation humaine (semi_auto) : le risque est RE-ÉVALUÉ avec les prix du moment. Toujours journalisée."""
+        result = await self._approve(proposal_id)
+        self._log("SignalApproval", {"proposal_id": proposal_id, "via": via, "ok": result.ok, "message": result.message})
+        return result
+
+    def reject(self, proposal_id: str, via: str = "programme") -> bool:
+        """Rejet humain d'un signal en attente. Toujours journalisé."""
+        found = self.pending.pop(proposal_id, None) is not None
+        self._log("SignalRejectedByUser", {"proposal_id": proposal_id, "via": via, "found": found})
+        return found
+
+    async def _approve(self, proposal_id: str) -> OrderResult:
+        if self.aborted:  # compte changé : plus aucun ordre, même approuvé à la main
+            return OrderResult.fail(f"Agent arrêté : {self.aborted}")
         proposal = self.pending.pop(proposal_id, None)
         if proposal is None:
             return OrderResult.fail("Proposition inconnue ou déjà traitée")
@@ -359,7 +387,13 @@ class Agent:
         except InvalidQuoteError as exc:
             self.pending[proposal_id] = proposal  # non consommée : l'utilisateur peut réessayer
             return OrderResult.fail(f"{exc} : réessayez dans un instant")
-        acc, positions = await self.gw.get_account(), await self.gw.get_positions()
+        acc = await self.gw.get_account()
+        try:
+            self._check_account(acc)  # même contrôle qu'à chaque cycle (ADR 0006)
+        except AccountChangedError as exc:
+            self._abort(str(exc), CycleReport())
+            return OrderResult.fail(str(exc))
+        positions = await self.gw.get_positions()
         decision = self.risk.evaluate(proposal, tick, acc, positions, self.specs)
         if not decision.approved or decision.order is None:
             await self.bus.publish(TradeRejected(proposal.id, decision.reasons))

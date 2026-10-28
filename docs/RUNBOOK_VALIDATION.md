@@ -99,6 +99,19 @@ dans une autre fenêtre, `kill --level 1 --yes` -> alerte CRITIQUE « Arrêt d'u
 **10.3 Coupure** : refaire §9.1 -> alertes « Liaison MT5 perdue », « liaison MT5 en erreur », « Liaison MT5 rétablie », « Reprise normale ».
 **10.4 Semaine de signaux seuls (V-4)** : `alerts: signals: true` dans config.yaml pour recevoir chaque signal.
 
+## 11. API locale (T-14)
+**11.1** `python -m pip install -e ".[api]"`, puis `autonomy: semi_auto` dans config.yaml et `run --config config.yaml --api`.
+Attendu : « API locale : http://127.0.0.1:8765/api/status (jeton dans data\api_token, jamais affiché ici) ».
+**11.2** Dans une autre fenêtre (dossier `agent`) :
+`$t = Get-Content data\api_token; Invoke-RestMethod http://127.0.0.1:8765/api/status -Headers @{Authorization="Bearer $t"}`
+-> état de l'agent. Sans l'en-tête -> erreur 401.
+**11.3** À l'arrivée d'un signal : `Invoke-RestMethod http://127.0.0.1:8765/api/signals -Headers @{Authorization="Bearer $t"}`, puis
+`Invoke-RestMethod -Method Post http://127.0.0.1:8765/api/signals/<id>/approve -Headers @{Authorization="Bearer $t"}`.
+Attendu : ordre démo exécuté avec SL/TP, `SignalApproval` (via api) dans `audit-tail`. Une 2e approbation est refusée.
+**11.4** Arrêt d'urgence : `Invoke-RestMethod -Method Post http://127.0.0.1:8765/api/kill -Headers @{Authorization="Bearer $t"}
+-ContentType application/json -Body '{"level":1}'` -> `KillSwitchActivated` et alerte Telegram ; `clear-kill` ensuite.
+Ne jamais coller le contenu de `data\api_token` dans un message ou un ticket.
+
 ## 7. NE PAS FAIRE avant validation complète
 Activer `autonomy: auto` + `--allow-auto`. Cette étape ne vient qu'après : étapes 1 à 6 OK, une semaine de
 fonctionnement en signaux seuls, revue de code des modules `risk/`, `execution/`, `monitoring/` par les deux
