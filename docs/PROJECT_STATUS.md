@@ -53,6 +53,10 @@ Dernière mise à jour : 27 oct. 2026 · Phase : validation M3 à M7 sur MT5 dé
 - [x] **`demo-dashboard`** (28 oct. 2026) : le dashboard sans MetaTrader, sur un agent et un courtier simulés, clairement étiqueté
   « DÉMO SIMULÉE » et isolé de vos vraies données. Pour voir le rendu, présenter le produit, faire des captures.
 
+- [!] **H-2 terminé : NO-GO** (28 oct. 2026). Protocole pré-enregistré (3 hypothèses, critère « hasard » durci à 97,5 %), H-1 re-vérifié à
+  l'identique avant de démarrer. Retour à la moyenne PF 0,94 / DD 11,6 % (140 trades, bruit), cassure PF 0,89 / DD 35,5 %, routeur complet
+  PF 0,92 / DD 35,4 %. **7 hypothèses testées, aucune retenue ; réserve toujours vierge.** Détail : `docs/validation/H-2_protocole.md` §9.
+
 ## À faire (ordre recommandé)
 
 | ID | Tâche | Preuve que c'est fini |

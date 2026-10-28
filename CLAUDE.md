@@ -23,7 +23,7 @@ Code du projet : `agent/orionx/` · tests : `agent/tests/` · docs : `docs/` (li
 - Windows, Python 3.12, venv dans `agent/.venv` ; installation : `pip install -e ".[dev,mt5]"`.
 - MT5 : compte **démo Hedging**, terminal déjà connecté (pas d'identifiants dans le code). Magic number `ORIONX_MAGIC = 261012`.
 - Dépôt Windows : `C:\Users\medar\Documents\orionx\orionx\` (code dans `agent`).
-- Tests (300 sur simulateur) : `python -m unittest discover -s tests -t .` depuis `agent/`.
+- Tests (309 sur simulateur) : `python -m unittest discover -s tests -t .` depuis `agent/`.
 - Commandes `python -m orionx.main` : simulate, mt5-check, demo-trade, run, kill, clear-kill, audit-verify, audit-tail, backtest, state, risk-set, risk-status, risk-check, alert-setup, alert-test, dashboard, demo-dashboard (démonstration sans MT5).
 - Config : copier `config.example.yaml` en `config.yaml` (jamais versionné) ; ne pas dupliquer la section `risk:`.
 
@@ -44,6 +44,7 @@ Code du projet : `agent/orionx/` · tests : `agent/tests/` · docs : `docs/` (li
 
 ## Faits clés
 - **Aucun avantage statistique démontré** : H-1/V-3 du 27 oct. 2026 = NO-GO (EURUSD H1, 26 855 barres de développement, `none` PF 0,86, drawdown 44,7 %, meilleur que 12 % des tirages aléatoires ; `vol`, `session`, `trend`, `all` échouent aussi). 4 échecs sur 5 ; réserve de 6 mois jamais ouverte. Voir `docs/validation/H-1_protocole.md` §9.
+- **H-2 (28 oct. 2026) = NO-GO aussi** : `mean_reversion` (PF 0,94, DD 11,6 %), `breakout` (PF 0,89, DD 35,5 %), routeur complet (PF 0,92, DD 35,4 %). 7 hypothèses testées, 0 retenue ; réserve toujours vierge. Ne pas continuer à chercher sur ces données (H-2 §8 et §9.4) : toute suite = nouveau protocole H-3 (autres données, symboles ou nature de signal). Voir `docs/validation/H-2_protocole.md`.
 - Le compte MetaQuotes-Demo n'a ni spread ni commission : les résultats y sont trop optimistes.
 - Weekend : `weekend_guard` bloque les entrées à partir du vendredi 18h UTC ; les tests de marché demandent un marché ouvert.
 - Retcodes MT5 : 10004/10020/10021 réessai sûr ; 10012/10031 ambigus (ne jamais renvoyer, chercher la position par commentaire `orionx:<proposal_id>`) ; 10027 trading algo désactivé ; 10030 mode de remplissage.
