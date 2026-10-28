@@ -45,6 +45,11 @@ Dernière mise à jour : 27 oct. 2026 · Phase : validation M3 à M7 sur MT5 dé
   en journée (marché immobile la nuit) ; 8.7 volontairement non fait (réserve H-2). Votre `config.yaml` a
   `max_total_open_risk_pct: 4.0` actif (reste d'essai ?) : à ramener à 2.0.
 
+- [x] **Dashboard : analyse du marché en temps réel** (28 oct. 2026) : 6 onglets (tendance, momentum, volatilité, niveaux, séance et
+  annonces, décision de l'agent) alimentés par ce que l'agent calcule déjà (M3/M4) + RSI, Bollinger et pivots classiques. Route
+  `GET /api/analysis` (lecture seule, même protection que l'API). Descriptif uniquement : aucun conseil d'achat ou de vente.
+  Testé sur simulateur et rendu vérifié (captures) ; **à vérifier sur MT5 démo en journée** (RUNBOOK §12.3 bis).
+
 ## À faire (ordre recommandé)
 
 | ID | Tâche | Preuve que c'est fini |

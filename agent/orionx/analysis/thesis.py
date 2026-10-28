@@ -26,6 +26,10 @@ class ThesisMonitor:
             for t in [t for t in store if t not in keep]:
                 del store[t]
 
+    def current(self, ticket: int) -> tuple[str, ...]:
+        """Raisons de dégradation actuellement retenues pour cette position (vide : la thèse tient)."""
+        return self._last.get(ticket, ())
+
     def check(self, pos: Position, state: MarketState | None, now_utc: datetime) -> tuple[str, ...] | None:
         reasons: list[str] = []
         buy = pos.side is Side.BUY

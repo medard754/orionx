@@ -20,9 +20,11 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from pathlib import Path
+from typing import Any
 
 from orionx.alerts.router import AlertRouter, attach_alerts
 from orionx.analysis.calendar import EconomicCalendar
+from orionx.analysis.snapshot import StrategyInfo, build_snapshot
 from orionx.analysis.state import MarketState, Regime, analyze, session_of
 from orionx.analysis.thesis import ThesisMonitor
 from orionx.analysis.tzutil import estimate_offset, server_to_utc_eet
@@ -41,7 +43,7 @@ from orionx.core.events import (
     TradeProposed,
     TradeRejected,
 )
-from orionx.core.models import AccountState, OrderResult, Position, SymbolSpec, TradeProposal, utcnow
+from orionx.core.models import AccountState, Bar, OrderResult, Position, SymbolSpec, TradeProposal, utcnow
 from orionx.data.engine import MarketData, MarketStore
 from orionx.decision.engine import Candidate, DecisionEngine, EngineResult, StrategyEntry
 from orionx.execution.executor import Executor
@@ -106,6 +108,8 @@ class Agent:
         self._clock, self.calendar = clock, calendar
         self.states: dict[str, MarketState] = {}
         self._state_bar: dict[str, datetime] = {}
+        self.analysis_bars: dict[str, list[Bar]] = {}  # bougies H1 de la dernière analyse (onglets du dashboard)
+        self.last_notes: dict[str, tuple[datetime, tuple[str, ...]]] = {}  # dernières notes du moteur de décision
         self.server_offset: timedelta | None = None
         self.signer = ApprovalSigner(clock=clock)
         self.risk = RiskManager(risk_cfg, self.signer, max_data_age_seconds=cfg.max_data_age_seconds, clock=clock,
@@ -141,6 +145,24 @@ class Agent:
 
     def _now_utc(self) -> datetime:
         return self._clock()
+
+    def analysis(self) -> list[dict[str, Any]]:
+        """Analyse de marché de chaque symbole, telle que l'agent la voit (dashboard). Lecture seule."""
+        a, now = self.cfg.analysis, self._now_utc()
+        strategies = [StrategyInfo(e.strategy.name, tuple(r.value for r in e.regimes) if e.regimes is not None else None, e.enabled)
+                      for e in self.engine.entries] if self.engine else []  # fmt: skip
+        out = []
+        for sym in self.cfg.symbols:
+            spec = self.specs.get(sym)
+            notes_at, notes = self.last_notes.get(sym, (None, ()))
+            out.append(build_snapshot(
+                sym, self.analysis_bars.get(sym, []), self.states.get(sym), self.market.last.get(sym),
+                spec.point * 10 if spec else 0.0001, now, self._to_utc, a,
+                events=self.calendar.upcoming(sym, now, 24, a.news_min_impact) if self.calendar else (),
+                blackout=self._blackout_title(sym, now), strategies=strategies, halts=self.risk.halt_reasons, notes=notes,
+                notes_at=notes_at, theses=[(p.ticket, self.thesis.current(p.ticket)) for p in self.last_positions if p.symbol == sym],
+            ))  # fmt: skip
+        return out
 
     def now(self) -> datetime:
         """Horloge de l'agent (UTC) : celle qui juge l'expiration des signaux."""
@@ -182,6 +204,7 @@ class Agent:
             if not bars:
                 continue
             state = analyze(sym, bars, a, self._to_utc)
+            self.analysis_bars[sym] = list(bars)
             self._state_bar[sym] = recent[-1].time  # seulement après succès : sinon le régime resterait figé une heure
             previous = self.states.get(sym)
             self.states[sym] = state
@@ -329,6 +352,7 @@ class Agent:
         bars = await self.gw.get_bars(sym, self.engine.timeframe, self.engine.min_bars + 5)
         res = self.engine.evaluate(sym, bars, tick, self._clock(), positions, self.states.get(sym))
         if res.notes:
+            self.last_notes[sym] = (self._clock(), tuple(res.notes))
             await self.bus.publish(DecisionNote(sym, res.notes))
         return res
 
