@@ -132,6 +132,17 @@ class GuardTests(unittest.TestCase):
             self.assertEqual(ch.status, "immediate")
             self.assertEqual(g.due(), risk_from_profile("prudent"))
 
+    def test_going_back_to_the_active_config_says_the_pending_request_was_cancelled(self) -> None:
+        with tempfile.TemporaryDirectory() as d:  # constaté sur MT5 démo le 28 oct. : « unchanged » alors que l'attente était annulée
+            g = self.guard(FixedClock(), d)
+            g.request(risk_from_profile("prudent"))
+            self.assertEqual(g.request(risk_from_profile("dynamic")).status, "delayed")
+            ch = g.request(risk_from_profile("prudent"))
+            self.assertEqual(ch.status, "cancelled")
+            self.assertIn("annulée", ch.note)
+            self.assertIsNone(g.pending())
+            self.assertEqual(g.request(risk_from_profile("prudent")).status, "unchanged", "rien en attente : rien à annuler")
+
     def test_startup_cannot_bypass_the_delay(self) -> None:
         with tempfile.TemporaryDirectory() as d:
             clock = FixedClock()

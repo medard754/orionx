@@ -1,0 +1,42 @@
+=== 8.1 Profils et verrouillage 24 h ===
+
+$ orionx risk-status
+Configuration de risque ACTIVE : aucune (l'agent n'a jamais démarré)
+Changement en attente : aucun
+
+$ orionx risk-set --profile prudent
+Profil « prudent » : unchanged - aucun changement.
+
+$ orionx risk-set --profile dynamic
+Profil « dynamic » : delayed (à partir de 29/10/2026 00:25 UTC) - risque en hausse : appliqué après 1 day, 0:00:00.
+
+$ orionx risk-status
+Configuration de risque ACTIVE : RiskConfig(risk_per_trade_pct=0.5, max_daily_loss_pct=3.0, max_weekly_loss_pct=6.0, max_drawdown_pct=10.0, max_open_positions=3, max_total_open_risk_pct=2.0, min_rr=1.5, max_consecutive_losses=4, max_spread_points=30.0, min_margin_level_pct=300.0, max_slippage_points=10, approval_ttl_seconds=5.0, max_currency_exposure_pct=2.0, weekend_guard=True, weekend_no_entry_from_utc=18, max_spread_points_by_symbol={})
+Changement en attente : appliqué à partir de 29/10/2026 00:25 UTC -> RiskConfig(risk_per_trade_pct=1.0, max_daily_loss_pct=5.0, max_weekly_loss_pct=10.0, max_drawdown_pct=20.0, max_open_positions=5, max_total_open_risk_pct=4.0, min_rr=1.2, max_consecutive_losses=6, max_spread_points=30.0, min_margin_level_pct=300.0, max_slippage_points=10, approval_ttl_seconds=5.0, max_currency_exposure_pct=4.0, weekend_guard=True, weekend_no_entry_from_utc=18, max_spread_points_by_symbol={})
+
+$ orionx risk-set --profile prudent
+Profil « prudent » : unchanged - aucun changement.
+
+$ orionx risk-status
+Configuration de risque ACTIVE : RiskConfig(risk_per_trade_pct=0.5, max_daily_loss_pct=3.0, max_weekly_loss_pct=6.0, max_drawdown_pct=10.0, max_open_positions=3, max_total_open_risk_pct=2.0, min_rr=1.5, max_consecutive_losses=4, max_spread_points=30.0, min_margin_level_pct=300.0, max_slippage_points=10, approval_ttl_seconds=5.0, max_currency_exposure_pct=2.0, weekend_guard=True, weekend_no_entry_from_utc=18, max_spread_points_by_symbol={})
+Changement en attente : aucun
+
+=== 8.2 Démarrage (30 cycles, signaux seuls) ===
+
+$ orionx run --max-cycles 30
+2026-10-28 01:25:26,398 WARNING orionx.data.engine: cotation incohérente EURUSD : bid 1.11303, ask 1.11299 : on attend une cotation valide
+Aucun calendrier économique configuré : pas de blocage autour des annonces (analysis.calendar_path).
+Alertes Telegram : activées (niveau minimal critique, signaux : non).
+Stratégies activées : ['trend_pullback'] · profil de risque actif : 0.5 % par trade.
+Agent démarré : autonomie=signals_only, symboles=('EURUSD',). Ctrl+C pour arrêter.
+Les positions ouvertes restent protégées par leur stop-loss même si l'agent s'arrête.
+Agent arrêté.
+
+$ orionx audit-tail
+1 2026-10-28T00:25:23.391300+00:00 MarketStateUpdated {'atr': 0.0008106491025428953, 'efficiency': 0.462, 'regime': 'trend_down', 'session': 'asia', 'symbol': 'EURUSD', 'trend_strength': -2.665, 'volatility_ratio': 0.813}
+2 2026-10-28T00:25:23.397295+00:00 AgentStarted {'autonomy': 'signals_only', 'equity': 99753.98, 'open_positions': 0, 'risk_startup': "config.yaml plus risqué : mis en attente jusqu'au 29/10/2026 00:25 UTC", 'strategies': ['trend_pullback_v1'], 'symbols': ['EURUSD']}
+3 2026-10-28T00:25:23.403146+00:00 DataStale {'age_seconds': 3600.0, 'symbol': 'EURUSD'}
+4 2026-10-28T00:25:52.604632+00:00 AgentStopped {'cycles': 30, 'note': 'positions ouvertes protégées par leur stop-loss serveur'}
+
+$ orionx audit-verify
+Journal : 4 entrées vérifiées -> INTÈGRE

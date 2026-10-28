@@ -58,7 +58,10 @@ Préparer : `copy config.example.yaml config.yaml` (garder l'ancien en sauvegard
 `max_data_age_seconds: 10.0`. Toutes les commandes avec `--config config.yaml`, depuis `agent/`.
 
 **8.1 Profils et verrouillage de 24 h** : `risk-status` ; `risk-set --profile prudent` ; `risk-set --profile dynamic`
-(attendu « delayed », date à +24 h) ; `risk-status` (changement en attente) ; `risk-set --profile prudent` (« immediate »).
+(attendu « delayed », date à +24 h) ; `risk-status` (changement en attente) ; `risk-set --profile prudent` (« cancelled » : demande
+en attente annulée, config active conservée ; « immediate » seulement si prudent est plus prudent que la config active).
+**Faire les étapes 8.1 et 8.2 dans un dossier isolé** pour ne pas toucher à votre vraie config de risque :
+`$env:ORIONX_DATA_DIR = "$env:TEMP\orionx_validation"` avant les commandes (VALIDÉ le 28 oct. 2026 : `docs/validation/V-M3M7_2026-10-28.md`).
 **8.2 Démarrage** : `run --max-cycles 30 --config config.yaml` puis `audit-tail`, `audit-verify`.
 Attendu : « Stratégies activées », `AgentStarted` avec `strategies`, journal « INTÈGRE ».
 **8.3 Qualité d'exécution** : `demo-trade --hold 20`. Attendu : une ligne « Qualité d'exécution : N tentative(s), latence X ms,
