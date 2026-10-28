@@ -41,8 +41,8 @@ Dernière mise à jour : 27 oct. 2026 · Phase : validation M3 à M7 sur MT5 dé
   téléchargement avec maquettes. Sans promesse de gain, avertissement sur les risques sur chaque page, boutons App Store /
   Windows « bientôt ». **Avant publication** : adresse de contact, mentions légales, avis juridique, marque, tarifs (`site/README.md`).
 
-- [x] **Validation M3-M7, nuit du 28 oct.** (`docs/validation/V-M3M7_2026-10-28.md`) : 8.1, 8.2, 8.6, 9.1 OK ; 8.3-8.5 à faire
-  en journée (marché immobile la nuit) ; 8.7 volontairement non fait (réserve H-2). Votre `config.yaml` a
+- [x] **Validation M3-M7, nuit du 28 oct.** (`docs/validation/V-M3M7_2026-10-28.md`) : 8.1, 8.2, 8.6, 9.1 OK ; 8.3 et 8.5 VALIDÉS en journée
+  (28 oct., 13:10 UTC ; 8.4 manuel restant) ; 8.7 volontairement non fait (réserve H-2). Votre `config.yaml` a
   `max_total_open_risk_pct: 4.0` actif (reste d'essai ?) : à ramener à 2.0.
 
 - [x] **Dashboard : analyse du marché en temps réel** (28 oct. 2026) : 6 onglets (tendance, momentum, volatilité, niveaux, séance et

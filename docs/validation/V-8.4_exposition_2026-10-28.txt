@@ -1,0 +1,17 @@
+compte démo MetaQuotes-Demo solde 99760.06
+prix 1.32908 1.3290899999999999 âge s -7195.900808095932
+ouverture : 10009 Request executed
+--- risk-check EURUSD buy ---
+Compte : équité=99754.06 USD · positions ouvertes : 1
+  - GBPUSD buy 6.0 lot, SL=1.32709
+Proposition simulée : BUY EURUSD, stop à 20 pips, objectif 3x
+-> REFUSÉ : CURRENCY_EXPOSURE
+(simulation : aucun ordre n'a été envoyé)
+--- risk-check EURUSD sell ---
+Compte : équité=99754.06 USD · positions ouvertes : 1
+  - GBPUSD buy 6.0 lot, SL=1.32709
+Proposition simulée : SELL EURUSD, stop à 20 pips, objectif 3x
+-> APPROUVÉ : 2.49 lot (risque cible 0.5 % du capital)
+(simulation : aucun ordre n'a été envoyé)
+fermeture : 10009 Request executed
+positions restantes : 0

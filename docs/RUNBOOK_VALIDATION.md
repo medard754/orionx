@@ -66,7 +66,7 @@ en attente annulée, config active conservée ; « immediate » seulement si pru
 Attendu : « Stratégies activées », `AgentStarted` avec `strategies`, journal « INTÈGRE ».
 **8.3 Qualité d'exécution** : `demo-trade --hold 20`. Attendu : une ligne « Qualité d'exécution : N tentative(s), latence X ms,
 glissement Y point(s) ». Noter X et Y : ils servent à régler `max_slippage_points`.
-**8.4 Exposition par devise (simulation, aucun ordre)** : dans config.yaml, `risk:` -> `max_total_open_risk_pct: 4.0` et
+**8.4 Exposition par devise (simulation, aucun ordre)** : dans config.yaml, `risk:` -> `max_total_open_risk_pct: 2.0` (pas 4.0 : une hausse met toute la config en attente 24 h) et
 `max_currency_exposure_pct: 1.0`. Dans MT5, ouvrir à la main un ACHAT GBPUSD de 6 lots avec un stop-loss à 20 pips sous
 l'entrée (risque d'environ 1,2 % : le compte démo est à 100 000 $). Puis :
 `risk-check --symbol EURUSD --side buy --config config.yaml` -> attendu REFUSÉ `CURRENCY_EXPOSURE` (déjà short USD) ;
@@ -76,7 +76,9 @@ Fermer la position GBPUSD et remettre les valeurs de config.yaml après le test.
 `Add-Content calendar.csv "$((Get-Date).ToUniversalTime().AddMinutes(10).ToString('yyyy-MM-ddTHH:mm:ssZ')),EUR,high,Test BCE"` ;
 dans config.yaml, `analysis:` -> `calendar_path: calendar.csv`. Fenêtre B : `run --config config.yaml`. Fenêtre A :
 `demo-trade --hold 300` (OUI). Attendu dans `audit-tail` : `ThesisDegraded` (raison « annonce imminente ») puis `PositionAdjusted`
-(`THESIS_STOP` si la position est en gain, sinon `THESIS_WATCH`). Retirer ensuite la ligne de test du calendrier.
+(`THESIS_STOP` : le stop est resserré, de moitié de la distance si la position n'est pas en gain, au point d'entrée si elle l'est ;
+`THESIS_WATCH` seulement si le stop est déjà serré). VALIDÉ le 28 oct. (`docs/validation/V-8.5_annonce_2026-10-28.txt`).
+Retirer ensuite la ligne de test du calendrier.
 **8.6 Mode sûr** : `run --config config.yaml`, couper le Wi-Fi 45 s : `DataFrozen` puis `CircuitBreakerTripped` ; au retour : `DataRestored`.
 **8.7 Backtests** (quelques minutes chacun) : `backtest --bars 15000 --strategy trend_pullback --config config.yaml`, idem avec
 `mean_reversion`, `breakout`, `engine:trend_pullback,breakout`. Aucune stratégie n'a d'avantage démontré : ne rien activer sans le témoin aléatoire.
