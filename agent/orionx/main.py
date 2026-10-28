@@ -5,6 +5,8 @@
   python -m orionx.main demo-trade        # T-02 : UN ordre démo de 0,01 lot, puis fermeture
   python -m orionx.main run               # boucle de l'agent (signaux seuls par défaut)
   python -m orionx.main run --api         # T-14 : + API locale (approbation des signaux, état, flux en direct)
+  python -m orionx.main run --api --dashboard   # M9 : + ouvre le dashboard dans le navigateur
+  python -m orionx.main dashboard         # M9 : rouvre le dashboard d'un agent lancé avec --api
   python -m orionx.main kill --level 3    # arrêt d'urgence depuis un autre terminal
   python -m orionx.main clear-kill        # retire le drapeau d'arrêt d'urgence
   python -m orionx.main audit-verify      # vérifie l'intégrité du journal
@@ -144,11 +146,13 @@ async def demo_trade(auto_yes: bool, hold: float) -> int:
         await gw.shutdown()
 
 
-async def run_agent(cfg: AppConfig, allow_auto: bool, cycle: float, max_cycles: int | None, api_port: int | None = None) -> int:
+async def run_agent(cfg: AppConfig, allow_auto: bool, cycle: float, max_cycles: int | None, api_port: int | None = None,
+                    open_dashboard: bool = False) -> int:
     from orionx.agent import Agent
     from orionx.audit.log import AuditLog
     from orionx.data.engine import MarketStore
     from orionx.decision.registry import build_engine
+    from orionx.monitoring.flag import read_kill_flag
     from orionx.risk.guard import RiskParamGuard
 
     gw = _mt5_gateway()
@@ -180,13 +184,22 @@ async def run_agent(cfg: AppConfig, allow_auto: bool, cycle: float, max_cycles: 
     print(f"Stratégies activées : {list(cfg.strategies)} · profil de risque actif : {agent.risk.cfg.risk_per_trade_pct} % par trade.")
     print(f"Agent démarré : autonomie={agent.autonomy}, symboles={cfg.symbols}. Ctrl+C pour arrêter.")
     print("Les positions ouvertes restent protégées par leur stop-loss même si l'agent s'arrête.")
+    flag = read_kill_flag(KILL_FLAG)
+    if flag:  # un drapeau oublié est appliqué dès le 1er cycle (niveau 3 : clôture de toutes les positions)
+        print(f"ATTENTION : drapeau d'arrêt d'urgence présent (niveau {flag.get('level')}, « {flag.get('reason', '')} », "
+              f"posé le {flag.get('at', '?')}) : il sera appliqué dès le premier cycle. Pour le lever : python -m orionx.main clear-kill")
     api_stop, api_task = asyncio.Event(), None
     if api_port:
         token_file = DATA_DIR / "api_token"
         token = api.new_token()  # nouveau jeton à chaque démarrage
         api.write_token(token_file, token)
-        api_task = asyncio.create_task(api.serve(api.create_app(agent, token, KILL_FLAG, feed), api_port, api_stop))
+        sessions = api.Sessions()
+        app = api.create_app(agent, token, KILL_FLAG, feed, port=api_port, sessions=sessions)
+        api_task = asyncio.create_task(api.serve(app, api_port, api_stop))
         print(f"API locale : http://127.0.0.1:{api_port}/api/status (jeton dans {token_file}, jamais affiché ici).")
+        if open_dashboard:
+            await asyncio.sleep(1.0)  # le temps que le serveur écoute
+            _open_browser(api_port, sessions.issue_code())
     try:
         await agent.run(asyncio.Event(), cycle_seconds=cycle, max_cycles=max_cycles)
     finally:
@@ -201,6 +214,39 @@ async def run_agent(cfg: AppConfig, allow_auto: bool, cycle: float, max_cycles: 
     if agent.aborted:
         print(f"ARRÊT DÉFINITIF : {agent.aborted}. Vérifiez le compte du terminal MT5, puis relancez l'agent.")
         return 4
+    return 0
+
+
+def _open_browser(port: int, code: str) -> None:
+    import webbrowser
+
+    # Code à usage unique (60 s) échangé contre un cookie de session : le navigateur ne voit jamais le jeton.
+    webbrowser.open(f"http://127.0.0.1:{port}/login?code={code}")
+    print(f"Dashboard ouvert dans le navigateur (http://127.0.0.1:{port}). Pour le rouvrir : python -m orionx.main dashboard")
+
+
+def dashboard_cmd(port: int) -> int:
+    """Rouvre le dashboard d'un agent déjà lancé avec --api (nouveau code de connexion à usage unique)."""
+    import json
+    import urllib.error
+    import urllib.request
+
+    token_file = DATA_DIR / "api_token"
+    if not token_file.exists():
+        print("Aucun agent avec API : lancez d'abord « python -m orionx.main run --config config.yaml --api ».")
+        return 2
+    req = urllib.request.Request(f"http://127.0.0.1:{port}/api/session/code", method="POST",
+                                 headers={"Authorization": f"Bearer {token_file.read_text(encoding='utf-8').strip()}"})  # fmt: skip
+    try:
+        with urllib.request.urlopen(req, timeout=5) as resp:
+            code = json.loads(resp.read().decode("utf-8"))["code"]
+    except urllib.error.HTTPError as exc:
+        print(f"L'API a refusé ({exc.code}) : l'agent a sans doute redémarré avec un nouveau jeton ; relancez cette commande.")
+        return 3
+    except OSError:
+        print(f"Aucune API sur le port {port} : l'agent est-il lancé avec --api ?")
+        return 3
+    _open_browser(port, code)
     return 0
 
 
@@ -550,7 +596,7 @@ async def h1_cmd(symbol: str, open_holdout: str | None, cfg: AppConfig) -> int:
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="orionx")
     commands = ["simulate", "mt5-check", "demo-trade", "run", "kill", "clear-kill", "audit-verify", "audit-tail",
-                "backtest", "state", "risk-set", "risk-status", "risk-check", "alert-setup", "alert-test"]  # fmt: skip
+                "backtest", "state", "risk-set", "risk-status", "risk-check", "alert-setup", "alert-test", "dashboard"]  # fmt: skip
     parser.add_argument("command", choices=commands)
     parser.add_argument("--yes", action="store_true", help="demo-trade : ne pas demander confirmation")
     parser.add_argument("--hold", type=float, default=10.0, help="demo-trade : secondes avant fermeture")
@@ -560,7 +606,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--cycle", type=float, default=1.0, help="run : secondes entre deux cycles")
     parser.add_argument("--max-cycles", type=int, default=None, help="run : s'arrêter après N cycles")
     parser.add_argument("--api", action="store_true", help="run : démarre l'API locale (127.0.0.1 seulement, jeton obligatoire)")
-    parser.add_argument("--api-port", type=int, default=8765, help="run --api : port de l'API locale")
+    parser.add_argument("--api-port", type=int, default=8765, help="run --api, dashboard : port de l'API locale")
+    parser.add_argument("--dashboard", action="store_true", help="run --api : ouvre le dashboard dans le navigateur")
     parser.add_argument("--symbol", default="EURUSD", help="backtest : symbole")
     parser.add_argument("--bars", type=int, default=3000, help="backtest : nombre de bougies H1")
     parser.add_argument("--folds", type=int, default=4, help="backtest : nombre de périodes consécutives")
@@ -582,7 +629,8 @@ def main(argv: list[str] | None = None) -> int:
         return asyncio.run(simulate(cfg))
     if args.command == "run":
         try:
-            return asyncio.run(run_agent(cfg, args.allow_auto, args.cycle, args.max_cycles, args.api_port if args.api else None))
+            return asyncio.run(run_agent(cfg, args.allow_auto, args.cycle, args.max_cycles, args.api_port if args.api else None,
+                                         args.dashboard))
         except KeyboardInterrupt:
             print("Arrêt demandé par l'utilisateur.")
             return 0
@@ -606,6 +654,8 @@ def main(argv: list[str] | None = None) -> int:
         if args.h1:
             return asyncio.run(h1_cmd(args.symbol, args.open_holdout, cfg))
         return asyncio.run(backtest_cmd(args.symbol, args.bars, args.folds, args.csv, args.filters, args.random_runs, args.strategy, cfg))
+    if args.command == "dashboard":
+        return dashboard_cmd(args.api_port)
     if args.command in ("alert-setup", "alert-test"):
         return alert_cmd(args.command, args.visible)
     if args.command == "demo-trade":

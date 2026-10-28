@@ -32,6 +32,11 @@ Dernière mise à jour : 27 oct. 2026 · Phase : validation M3 à M7 sur MT5 dé
   (`alerts: signals: true`, pour V-4). Testé sur simulateur et faux Telegram. **Bot @orionx_trader_bot connecté le 27 oct.** (jeton dans le coffre Windows) ;
   reste le test de bout en bout avec l'agent : `RUNBOOK_VALIDATION.md` §10.2.
 
+- [x] **M9 dashboard web local** (27 oct. 2026) : état, positions, signaux à approuver ou rejeter, arrêt d'urgence, événements en
+  direct. Connexion sans jamais exposer le jeton (code à usage unique -> cookie de session), anti-CSRF, CSP stricte, aucune
+  injection de HTML (ADR 0008). **Essayé dans le navigateur le 28 oct.** avec l'agent sur MT5 démo : état, arrêts d'urgence 1 et 3, alertes
+  Telegram, cotation croisée gérée -> OK ; flux en direct muet (bibliothèque `websockets` manquante) : corrigé, à revérifier (§12).
+
 ## À faire (ordre recommandé)
 
 | ID | Tâche | Preuve que c'est fini |
@@ -44,7 +49,7 @@ Dernière mise à jour : 27 oct. 2026 · Phase : validation M3 à M7 sur MT5 dé
 | H-1 | ~~Comparer les filtres~~ : fait, 4 échecs sur 5. **Reste 1 hypothèse** avant l'arrêt de `trend_pullback`. Ne pas la dépenser sans y réfléchir : la réserve est encore vierge | Décision du propriétaire : 5e hypothèse, ou nouvelle stratégie (protocole H-2) |
 | T-10 | ~~`ruff` et `mypy --strict` bloquants dans la CI~~ : fait le 27 oct. (0 erreur, 0 `type: ignore` ajouté) | — |
 | T-11 | Identifiants dans le coffre-fort Windows (`keyring`) | Plus aucun mot de passe en clair |
-| T-13 | Reconnexion automatique du terminal MT5 : **codée et testée sur simulateur** (27 oct., ADR 0006, avec contrôle du compte à chaque cycle). Reste le test de coupure sur démo (`RUNBOOK_VALIDATION.md` §9) | Coupure réelle du terminal journalisée, mode sûr puis reprise |
+| T-13 | Reconnexion automatique du terminal MT5 : **codée et testée sur simulateur** (27 oct., ADR 0006, avec contrôle du compte à chaque cycle). **Coupure du terminal validée sur MT5 démo le 28 oct.** (détection, mode sûr, reconnexion, reprise après 30 cycles, alertes) ; reste le test du changement de compte (§9.2) | Coupure réelle du terminal journalisée, mode sûr puis reprise |
 | T-14 | API locale : **codée et testée** (27 oct., ADR 0007 : 127.0.0.1, jeton, Host vérifié, pas de CORS). Reste l'essai avec l'agent sur MT5 démo (`RUNBOOK_VALIDATION.md` §11), puis le dashboard M9 | Approbation d'un signal depuis l'API |
 
 ## Décisions prises

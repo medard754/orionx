@@ -80,14 +80,18 @@ dans config.yaml, `analysis:` -> `calendar_path: calendar.csv`. Fenêtre B : `ru
 **8.8 Week-end (facultatif, un vendredi)** : `positions: weekend_flat: true`, une position démo ouverte, vérifier la fermeture vers 20h30 UTC.
 
 ## 9. Reconnexion et changement de compte (T-13)
-**9.1 Coupure du terminal** : `run --config config.yaml` en signaux seuls, compte démo. Fermer MetaTrader 5 (pas l'agent), attendre 1 minute,
-le relancer et laisser le compte se reconnecter. Attendu dans `audit-tail` : `CycleError`, `CircuitBreakerTripped` (GATEWAY_ERRORS),
-`GatewayReconnectFailed` (une ligne à la 1re tentative, puis une sur 10), puis `GatewayReconnected` (avec `down_seconds`), enfin
-`GatewayRecovered` 30 cycles plus tard. Aucune entrée n'est possible tant que le mode sûr dure. Vérifier que les positions ouvertes
-n'ont pas été touchées.
-**9.2 Terminal rouvert sur un autre compte** : même procédure, mais se connecter à un AUTRE compte démo avant que l'agent se reconnecte.
-Attendu : `AccountChanged`, `CircuitBreakerTripped` (ACCOUNT_CHANGED), l'agent s'arrête avec le message « ARRÊT DÉFINITIF » (code de
-sortie 4), et il n'a lu ni modifié aucune position du nouveau compte.
+**9.1 Coupure du terminal** (VALIDÉ le 28 oct. 2026) : `run --config config.yaml` en signaux seuls, compte démo. Fermer MetaTrader 5 (pas
+l'agent). **MT5 se rouvre tout seul** en quelques secondes : c'est la bibliothèque MetaTrader5 qui relance le terminal quand l'agent se
+reconnecte (pratique pour la reprise, mais l'agent rouvrira aussi un MT5 que vous avez fermé volontairement ; arrêtez l'agent d'abord).
+Attendu sur Telegram, dans cet ordre : 🔴 « liaison MT5 en erreur », 🟠 « Liaison MT5 rétablie après N s » (N = durée depuis la 1re
+erreur), puis 🟠 « Reprise normale » 30 cycles plus tard. Dans `audit-tail` : `CycleError`, `CircuitBreakerTripped` (GATEWAY_ERRORS),
+`GatewayReconnected` (avec `down_seconds`), `GatewayRecovered`. `GatewayReconnectFailed` n'apparaît que si la 1re tentative échoue.
+Aucune entrée n'est possible tant que le mode sûr dure. Vérifier que les positions ouvertes n'ont pas été touchées.
+**9.2 Changement de compte** : MT5 se rouvrant seul en quelques secondes, on ne peut pas changer de compte « pendant la coupure ». On
+teste directement le contrôle, qui s'exécute à CHAQUE cycle : agent lancé et MT5 ouvert, dans MT5 menu Fichier > Se connecter à un compte de
+trading, choisir un AUTRE compte DÉMO (en ouvrir un : Fichier > Ouvrir un compte). Attendu en moins de 2 s : 🔴 « Agent ARRÊTÉ : compte
+différent… », `AccountChanged` et `CircuitBreakerTripped` (ACCOUNT_CHANGED) dans `audit-tail`, message « ARRÊT DÉFINITIF » dans la
+console (code de sortie 4), et aucune lecture ni modification de position du nouveau compte. Reconnecter ensuite le compte d'origine.
 **9.3 Ne JAMAIS tester avec un compte réel** : le contrôle protège justement de ce cas, ne le provoquez pas.
 
 ## 10. Alertes Telegram (M8)
@@ -111,6 +115,18 @@ Attendu : ordre démo exécuté avec SL/TP, `SignalApproval` (via api) dans `aud
 **11.4** Arrêt d'urgence : `Invoke-RestMethod -Method Post http://127.0.0.1:8765/api/kill -Headers @{Authorization="Bearer $t"}
 -ContentType application/json -Body '{"level":1}'` -> `KillSwitchActivated` et alerte Telegram ; `clear-kill` ensuite.
 Ne jamais coller le contenu de `data\api_token` dans un message ou un ticket.
+
+## 12. Dashboard web (M9)
+**12.1** `python -m pip install -e ".[api]"` (à refaire après le 28 oct. : ajoute `websockets`, sans lequel le flux en direct reste muet), `autonomy: semi_auto` dans config.yaml, puis
+`python -m orionx.main run --config config.yaml --api --dashboard`. Le navigateur s'ouvre sur le dashboard (aucun jeton à saisir).
+Si le navigateur se ferme : `python -m orionx.main dashboard` (dossier `agent`) le rouvre.
+**12.2 À regarder** : pastille « en marche » (pas « agent injoignable »), « démo » dans Compte, équité et solde, pastille « en direct »
+sur les événements ; arrêter MT5 doit faire passer la pastille en « mode sûr » puis les événements de reconnexion s'afficher.
+**12.3 Signal** : à l'arrivée d'un signal, il apparaît avec Approuver / Rejeter ; une confirmation est demandée ; l'approbation envoie
+un ordre démo avec stop et objectif, la position apparaît dans « Positions ouvertes ». Un signal expiré ne peut pas être approuvé.
+**12.4 Arrêt d'urgence** : bouton niveau 1 + confirmation -> alerte Telegram et pastille « mode sûr » au cycle suivant ; `clear-kill` ensuite.
+**12.5 Sécurité** : copier l'adresse du dashboard dans un autre navigateur (sans cookie) -> « Session expirée ». Relancer
+`dashboard` -> le nouveau code fonctionne UNE fois (le recoller dans l'adresse échoue).
 
 ## 7. NE PAS FAIRE avant validation complète
 Activer `autonomy: auto` + `--allow-auto`. Cette étape ne vient qu'après : étapes 1 à 6 OK, une semaine de

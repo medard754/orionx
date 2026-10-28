@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <title>ORIONX Dashboard</title>
+  <link rel="icon" type="image/png" href="/favicon.ico">
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <header class="topbar">
+    <img class="brand" src="/logo.png" alt="ORIONX, AI Trading Agent" width="180" height="60">
+    <div class="status" aria-live="polite">
+      <span id="mode" class="pill">…</span>
+      <span id="health" class="pill"><span class="dot" aria-hidden="true"></span><span class="label">connexion…</span></span>
+    </div>
+    <span id="updated" class="updated"></span>
+  </header>
+  <div class="glowline" aria-hidden="true"></div>
+
+  <div id="banner" class="banner" role="alert" hidden></div>
+
+  <main class="layout">
+    <section class="kpis" aria-label="Indicateurs">
+      <article class="tile tile-equity">
+        <h2>Équité</h2>
+        <p class="value" id="equity">—</p>
+        <p class="sub" id="equity-delta">historique de la session</p>
+        <svg id="spark" class="spark" viewBox="0 0 300 60" preserveAspectRatio="none" role="img" aria-label="Évolution de l'équité pendant la session"></svg>
+      </article>
+      <article class="tile">
+        <h2>Solde</h2>
+        <p class="value" id="balance">—</p>
+        <p class="sub">positions fermées</p>
+      </article>
+      <article class="tile">
+        <h2>Résultat latent</h2>
+        <p class="value" id="pnl">—</p>
+        <p class="sub">positions ouvertes</p>
+      </article>
+      <article class="tile">
+        <h2>Positions</h2>
+        <p class="value" id="npos">—</p>
+        <p class="sub" id="nsig">— signal en attente</p>
+      </article>
+      <article class="tile">
+        <h2>Compte</h2>
+        <p class="value" id="account">—</p>
+        <p class="sub"><span id="cycles">—</span> cycles</p>
+      </article>
+    </section>
+
+    <section class="card span-8" aria-labelledby="t-signals">
+      <div class="card-head">
+        <h2 id="t-signals">Signaux en attente</h2>
+        <span class="hint">ré-évalués par le risque avec les prix du moment</span>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Symbole</th><th>Sens</th><th>Stop</th><th>Objectif</th><th>Stratégie</th><th>Valable jusqu'à</th><th></th></tr></thead>
+          <tbody id="signals"><tr><td colspan="7" class="empty">Aucun signal.</td></tr></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="card span-4 card-danger" aria-labelledby="t-kill">
+      <div class="card-head">
+        <h2 id="t-kill">Arrêt d'urgence</h2>
+      </div>
+      <p class="halts">Arrêts actifs : <strong id="halts">—</strong></p>
+      <div class="kill">
+        <button type="button" class="btn btn-l1" data-level="1"><b>1</b> Pause des entrées</button>
+        <button type="button" class="btn btn-l2" data-level="2"><b>2</b> Protéger les positions</button>
+        <button type="button" class="btn btn-l3" data-level="3"><b>3</b> Tout clôturer</button>
+      </div>
+      <p class="hint">Appliqué au prochain cycle. Levée : <code>clear-kill</code> dans un terminal.</p>
+    </section>
+
+    <section class="card span-8" aria-labelledby="t-positions">
+      <div class="card-head">
+        <h2 id="t-positions">Positions ouvertes</h2>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Ticket</th><th>Symbole</th><th>Sens</th><th>Lots</th><th>Ouverture</th><th>Stop</th><th>Objectif</th><th>Résultat</th></tr></thead>
+          <tbody id="positions"><tr><td colspan="8" class="empty">Aucune position.</td></tr></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="card span-4" aria-labelledby="t-events">
+      <div class="card-head">
+        <h2 id="t-events">Événements</h2>
+        <span id="live" class="pill pill-sm">…</span>
+      </div>
+      <ol id="events" class="events"></ol>
+    </section>
+  </main>
+
+  <footer class="foot">ORIONX · agent local · compte démo uniquement · chaque décision est écrite dans le journal d'audit</footer>
+
+  <script src="/app.js"></script>
+</body>
+</html>

@@ -62,6 +62,40 @@ class ReconnectTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(self.gw.orders_sent, 0)
         self.assertIsNone(self.agent.aborted)
 
+    async def test_downtime_is_measured_from_the_first_failure_not_from_the_first_attempt(self) -> None:
+        await self.build()
+        self.gw.disconnect()  # la reconnexion réussira dès la 1re tentative, comme sur MT5 le 28 oct. (terminal relancé seul)
+        for _ in range(3):  # une erreur par seconde : 1re à T0, 3e (et reconnexion) à T0 + 2 s
+            await self.agent.run_cycle()
+            self.clock.advance(seconds=1)
+        events = [e for e in self.audit.tail(200) if e["kind"] == "GatewayReconnected"]
+        self.assertEqual(len(events), 1)
+        self.assertEqual(events[0]["payload"]["down_seconds"], 2.0, "durée depuis la 1re erreur, pas « 0.0 s »")
+
+    async def test_the_outage_alert_comes_before_the_reconnected_one(self) -> None:
+        from orionx.alerts.router import AlertRouter
+        from orionx.core.config import AlertsConfig
+        from tests.test_alerts import FakeNotifier
+
+        self.clock = FixedClock(T0)
+        self.gw = SimulatedGateway({"EURUSD": EURUSD})
+        self.gw.set_tick("EURUSD", 1.08412, 1.08420, T0)
+        self.gw.set_bars("EURUSD", "H1", [new_bar(i) for i in range(5)])
+        notifier = FakeNotifier()
+        router = AlertRouter(notifier, AlertsConfig(), clock=self.clock)
+        self.addCleanup(router.close, 1.0)
+        cfg = AppConfig(symbols=("EURUSD",), autonomy="signals_only", risk=NOWEEKEND)
+        agent = Agent(self.gw, cfg, strategy=None, audit=AuditLog(), clock=self.clock, alerts=router)
+        await agent.start()
+        self.gw.disconnect()
+        for _ in range(3):
+            await agent.run_cycle()  # la reconnexion réussit dès la 1re tentative (3e erreur)
+        router.flush()
+        texts = notifier.sent
+        down = next(i for i, t in enumerate(texts) if "liaison MT5 en erreur" in t)
+        back = next(i for i, t in enumerate(texts) if "Liaison MT5 rétablie" in t)
+        self.assertLess(down, back, "on annonce la panne avant son rétablissement")
+
     async def test_backoff_is_capped_at_one_minute(self) -> None:
         await self.build()
         self.gw.disconnect()

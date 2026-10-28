@@ -426,11 +426,14 @@ class Agent:
     async def _failure(self, message: str, exc: BaseException | None = None) -> None:
         self._errors += 1
         self._ok_streak = 0
+        if self._errors == 1:
+            self._down_since = self._clock()  # début de la panne : la durée annoncée part de la 1re erreur
         log.error("Cycle en erreur (%s) : %s", self._errors, message)
         if self._errors in (1, 10) or self._errors % 100 == 0:
             self._log("CycleError", {"consecutive": self._errors, "error": message})
         if self._errors >= 3 and GATEWAY_HALT not in self.risk.halt_reasons:
-            self.risk.halt(GATEWAY_HALT)  # l'événement est publié par _publish_new_halts
+            self.risk.halt(GATEWAY_HALT)
+            await self._publish_new_halts()  # la panne est annoncée AVANT toute tentative de reconnexion (donc avant « rétablie »)
         # une erreur de logique (bug) ne justifie pas de rouvrir MT5 : seules les erreurs de liaison déclenchent la reconnexion
         if self._errors >= RECONNECT_AFTER_ERRORS and isinstance(exc, GatewayError | OSError):
             await self._try_reconnect()
