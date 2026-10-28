@@ -133,6 +133,7 @@ class Agent:
         self.cycles = 0
         self.last_account: AccountState | None = None  # derniers états vus : exposés par l'API locale
         self.last_positions: list[Position] = []
+        self.simulated = False  # True : agent de démonstration (courtier simulé), signalé dans le dashboard
         self.aborted: str | None = None  # raison de l'arrêt définitif (compte changé) ; None tant que l'agent peut tourner
         self._login: int | None = None  # compte du premier démarrage : référence pour toute la vie de l'agent
         self._reconnect_attempts = 0

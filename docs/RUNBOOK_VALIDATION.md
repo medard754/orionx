@@ -120,6 +120,9 @@ Attendu : ordre démo exécuté avec SL/TP, `SignalApproval` (via api) dans `aud
 Ne jamais coller le contenu de `data\api_token` dans un message ou un ticket.
 
 ## 12. Dashboard web (M9)
+**12.0 Voir le rendu sans MetaTrader** : `python -m orionx.main demo-dashboard` (dossier `agent`). Agent et courtier SIMULÉS : prix qui
+bougent, signal à approuver, positions, annonces, arrêt d'urgence ; pastille jaune « DÉMO SIMULÉE ». N'utilise ni votre config, ni
+votre journal, ni votre drapeau d'arrêt (dossier temporaire) et n'envoie aucun ordre à un courtier. Ctrl+C pour arrêter.
 **12.1** `python -m pip install -e ".[api]"` (à refaire après le 28 oct. : ajoute `websockets`, sans lequel le flux en direct reste muet), `autonomy: semi_auto` dans config.yaml, puis
 `python -m orionx.main run --config config.yaml --api --dashboard`. Le navigateur s'ouvre sur le dashboard (aucun jeton à saisir).
 Si le navigateur se ferme : `python -m orionx.main dashboard` (dossier `agent`) le rouvre.
