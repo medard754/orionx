@@ -39,6 +39,17 @@ python -m http.server 8080
 
 ## Déployer
 
+**En ligne (GitHub Pages)** : https://medard754.github.io/orionx/ , servi depuis la branche `gh-pages`, qui ne contient que ce
+dossier. Pour publier une mise à jour après un commit sur `feat/site-vitrine` :
+
+```powershell
+git subtree push --prefix site origin gh-pages
+```
+
+Le site est en ligne quelques minutes plus tard. `.nojekyll` demande à GitHub de servir les fichiers tels quels.
+
+Autres hébergeurs possibles :
+
 N'importe quel hébergement de site statique convient : il suffit de publier le contenu de `site/`.
 
 - **Netlify** ou **Cloudflare Pages** : glisser-déposer le dossier `site/`, ou relier le dépôt GitHub avec `site` comme dossier de
