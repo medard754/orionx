@@ -1,0 +1,14 @@
+=== Essai 9.2 : changement de compte (28 oct. 2026, 13:53 UTC) ===
+Agent démarré sur le compte démo 114009314 (signaux seuls), puis MT5 connecté au second compte démo 114757489.
+
+--- journal d'audit ---
+2 2026-10-28T13:52:43.379492+00:00 AgentStarted {'autonomy': 'signals_only', 'equity': 99754.06, 'open_positions': 0, 'risk_startup': "config.yaml plus risqué, déjà en attente jusqu'au 29/10/2026 00:25 UTC", 'strategies': ['trend_pullback_v1'], 'symbols': ['EURUSD']}
+5 2026-10-28T13:53:41.882429+00:00 AccountChanged {'expected_login': 114009314, 'reason': "compte différent (démarré sur 114009314, vu 114757489) : l'agent s'arrête"}
+6 2026-10-28T13:53:41.902377+00:00 CircuitBreakerTripped {'reason': 'ACCOUNT_CHANGED'}
+7 2026-10-28T13:53:41.909004+00:00 AgentStopped {'cycles': 59, 'note': 'positions ouvertes protégées par leur stop-loss serveur'}
+
+--- console de l'agent ---
+Agent arrêté.
+ARRÊT DÉFINITIF : compte différent (démarré sur 114009314, vu 114757489) : l'agent s'arrête. Vérifiez le compte du terminal MT5, puis relancez l'agent.
+
+Journal : 7 entrées vérifiées -> INTÈGRE
