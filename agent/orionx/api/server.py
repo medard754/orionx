@@ -26,6 +26,7 @@ from fastapi.responses import FileResponse, PlainTextResponse, RedirectResponse,
 from pydantic import BaseModel, Field
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 
+from orionx.agent import TicketError
 from orionx.analysis.snapshot import REGIME_LABELS, SESSION_LABELS
 from orionx.api.explain import explain_signal
 from orionx.api.feed import EventFeed
@@ -109,6 +110,13 @@ class DecisionOut(BaseModel):
     message: str = ""
     ticket: int | None = None
     price: float | None = None
+
+
+class TicketIn(BaseModel):
+    symbol: str = Field(max_length=12)
+    side: str = Field(description="buy ou sell", max_length=12)
+    sl_pips: float = Field(description="distance du stop-loss en pips (obligatoire)")
+    rr: float = Field(default=2.0, description="gain visé, en multiple du risque")
 
 
 class KillIn(BaseModel):
@@ -217,22 +225,44 @@ def create_app(agent: Agent, token: str, kill_flag: Path, feed: EventFeed | None
     @app.get("/api/signals", dependencies=auth)
     async def list_signals() -> list[SignalOut]:
         now = agent.now()
-        out = []
-        for p in agent.pending.values():
-            state, preview = agent.states.get(p.symbol), agent.preview_signal(p)
-            out.append(SignalOut(
-                id=p.id, symbol=p.symbol, side=p.side.value, sl=p.sl, tp=p.tp, confidence=p.confidence, strategy=p.strategy,
-                rationale=list(p.rationale), valid_until=p.valid_until, expired=p.valid_until <= now, preview=preview,
-                explain=explain_signal(side=p.side.value, symbol=p.symbol, strategy=p.strategy, rationale=p.rationale,
-                                       regime_label=REGIME_LABELS.get(state.regime.value) if state else None,
-                                       session_label=SESSION_LABELS.get(state.session.value) if state else None,
-                                       sl=p.sl, tp=p.tp, preview=preview)))  # fmt: skip
-        return out
+        return [signal_out(p, now) for p in agent.pending.values()]
 
     @app.get("/api/analysis", dependencies=auth)
     async def analysis() -> list[dict[str, Any]]:
         """Analyse de marché de chaque symbole (tendance, momentum, volatilité, niveaux, séance, décision). Lecture seule."""
         return agent.analysis()
+
+    def signal_out(p: Any, now: datetime) -> SignalOut:
+        state, preview = agent.states.get(p.symbol), agent.preview_signal(p)
+        return SignalOut(
+            id=p.id, symbol=p.symbol, side=p.side.value, sl=p.sl, tp=p.tp, confidence=p.confidence, strategy=p.strategy,
+            rationale=list(p.rationale), valid_until=p.valid_until, expired=p.valid_until <= now, preview=preview,
+            explain=explain_signal(side=p.side.value, symbol=p.symbol, strategy=p.strategy, rationale=p.rationale,
+                                   regime_label=REGIME_LABELS.get(state.regime.value) if state else None,
+                                   session_label=SESSION_LABELS.get(state.session.value) if state else None,
+                                   sl=p.sl, tp=p.tp, preview=preview, manual=p.strategy == "ticket_manuel"))  # fmt: skip
+
+    def ticket_error(exc: TicketError) -> HTTPException:
+        """409 si l'agent ne peut pas (arrêté, signaux seuls, trop de tickets), 422 si la demande est invalide."""
+        text = str(exc)
+        conflict = any(w in text for w in ("arrêté", "signaux seuls", "en attente", "Pas encore de prix"))
+        return HTTPException(status.HTTP_409_CONFLICT if conflict else status.HTTP_422_UNPROCESSABLE_ENTITY, text)
+
+    @app.post("/api/tickets/preview", dependencies=auth)
+    async def ticket_preview(body: TicketIn) -> SignalOut:
+        """Montants en jeu d'un ticket AVANT de le préparer : rien n'est stocké, rien n'est envoyé."""
+        try:
+            return signal_out(agent.build_ticket(body.symbol, body.side, body.sl_pips, body.rr), agent.now())
+        except TicketError as exc:
+            raise ticket_error(exc) from None
+
+    @app.post("/api/tickets", dependencies=auth)
+    async def ticket_create(body: TicketIn) -> SignalOut:
+        """Prépare un ticket : il apparaît dans les signaux en attente et ne part qu'après approbation."""
+        try:
+            return signal_out(agent.propose_manual(body.symbol, body.side, body.sl_pips, body.rr), agent.now())
+        except TicketError as exc:
+            raise ticket_error(exc) from None
 
     @app.post("/api/signals/{proposal_id}/approve", dependencies=auth)
     async def approve(proposal_id: str) -> DecisionOut:

@@ -45,9 +45,14 @@ HALTS_FR = {
     "DATA_STALE": "les prix sont figés (mode sûr)",
     "ACCOUNT_CHANGED": "le compte du terminal a changé",
 }
+MANUAL_NOTICE = ("Rappel : ORIONX ne juge pas la qualité de votre idée de trade. Il calcule seulement la taille pour que la perte, si le "
+                "stop-loss est touché, reste dans votre limite de risque. Aucun résultat n'est assuré : "
+                "n'approuvez que ce que vous acceptez de perdre.")  # fmt: skip
 NOTES_FR = {"VOLUME_REDUCED": "La taille a été réduite pour respecter le risque cumulé autorisé."}
 
 STRATEGIES_FR = {
+    "ticket_manuel": "Ce trade vient de vous : ORIONX n'a pas d'avis sur la direction du marché. "
+                     "Il applique votre stop-loss et vérifie le risque.",
     "trend_pullback": "Cette stratégie cherche les petits reculs dans une tendance déjà installée : elle entre dans le sens de la tendance "
                       "après un repli.",
     "mean_reversion": "Cette stratégie parie qu'après un mouvement excessif, dans un marché sans tendance, le prix revient vers sa "
@@ -104,13 +109,14 @@ def build_preview(decision: Decision, side: Side, tick: Tick, spec: SymbolSpec, 
 
 
 def explain_signal(*, side: str, symbol: str, strategy: str, rationale: Sequence[str], regime_label: str | None,
-                   session_label: str | None, sl: float, tp: float, preview: Mapping[str, Any]) -> list[str]:  # fmt: skip
+                   session_label: str | None, sl: float, tp: float, preview: Mapping[str, Any],
+                   manual: bool = False) -> list[str]:  # fmt: skip
     """Paragraphes « Pourquoi ce signal ? » : direction, logique, contexte, argent en jeu, verdict du risque, rappel d'honnêteté."""
     buy = side == "buy"
-    out = [f"{'Achat' if buy else 'Vente'} sur {symbol} : l'agent parie sur une {'hausse' if buy else 'baisse'} du prix.",
-           strategy_blurb(strategy)]  # fmt: skip
+    who = "vous pariez" if manual else "l'agent parie"
+    out = [f"{'Achat' if buy else 'Vente'} sur {symbol} : {who} sur une {'hausse' if buy else 'baisse'} du prix.", strategy_blurb(strategy)]
     if rationale:
-        out.append("Ce qu'il a repéré : " + " ; ".join(rationale) + ".")
+        out.append(("Votre ticket : " if manual else "Ce qu'il a repéré : ") + " ; ".join(rationale) + ".")
     context = []
     if regime_label:
         context.append(f"régime du marché : {regime_label.lower()}")
@@ -129,5 +135,5 @@ def explain_signal(*, side: str, symbol: str, strategy: str, rationale: Sequence
         reasons = list(preview.get("reasons_fr", []))
         out.append("Le gestionnaire de risques refuserait ce trade en ce moment" + (" :" if reasons else "."))
         out.extend(reasons)
-    out.append(EDGE_NOTICE)
+    out.append(MANUAL_NOTICE if manual else EDGE_NOTICE)
     return out

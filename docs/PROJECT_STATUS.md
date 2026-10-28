@@ -62,6 +62,12 @@ Dernière mise à jour : 27 oct. 2026 · Phase : validation M3 à M7 sur MT5 dé
   % du capital) calculés à blanc par le gestionnaire de risques (aucun ordre), le verdict du risque en phrases, et le rappel « aucun
   avantage démontré ». La confirmation d'approbation reprend ces montants. Descriptif, jamais de conseil d'achat ou de vente.
 
+- [x] **Ticket d'ordre guidé** (28 oct. 2026) : dans le dashboard, l'utilisateur choisit le sens et le stop-loss (5 à 200 pips, obligatoire) et le
+  gain visé (1 à 5 fois le risque) ; ORIONX calcule la taille (risque par trade configuré), montre en direct les montants en jeu et le verdict du
+  risque, puis le ticket rejoint les signaux en attente : **même chemin d'approbation** que les signaux de l'agent (risque ré-évalué, ordre signé,
+  journal d'audit, `signals_only` refusé, 3 tickets au plus, expiration 10 min). L'agent n'a pas d'avis sur la direction. Démo uniquement ;
+  chemin vers un usage réel prudent (docs/validation, RUNBOOK §13).
+
 ## À faire (ordre recommandé)
 
 | ID | Tâche | Preuve que c'est fini |

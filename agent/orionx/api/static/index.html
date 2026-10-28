@@ -80,6 +80,26 @@
       <p class="hint disclaimer">Lecture automatique de l'état du marché, pas un conseil en investissement. Aucune stratégie n'a encore démontré d'avantage statistique.</p>
     </section>
 
+    <section class="card span-12" aria-labelledby="t-ticket">
+      <div class="card-head">
+        <h2 id="t-ticket">Ticket d'ordre guidé</h2>
+        <span class="hint">vous choisissez le sens et le stop, ORIONX calcule la taille et contrôle le risque</span>
+      </div>
+      <form id="ticket" class="ticket" autocomplete="off">
+        <label class="field"><span>Symbole</span><select id="tk-symbol" class="select" aria-label="Symbole du ticket"></select></label>
+        <fieldset class="field sides"><legend>Sens</legend>
+          <label class="side buy"><input type="radio" name="tk-side" value="buy" checked><span>Achat</span></label>
+          <label class="side sell"><input type="radio" name="tk-side" value="sell"><span>Vente</span></label>
+        </fieldset>
+        <label class="field"><span>Stop-loss (pips)</span><input id="tk-sl" class="input" type="number" min="5" max="200" step="1" value="20" required></label>
+        <label class="field"><span>Gain visé (× le risque)</span><input id="tk-rr" class="input" type="number" min="1" max="5" step="0.5" value="2" required></label>
+        <button type="submit" id="tk-go" class="btn btn-approve">Préparer le ticket</button>
+      </form>
+      <p class="help block">Le stop-loss est obligatoire : c'est la distance, en pips, entre le prix d'entrée et le prix où la position se ferme toute seule si le marché va contre vous. Plus il est loin, plus la taille de la position est petite pour que la perte maximale reste la même. 1 pip = 0,0001 sur l'EURUSD.</p>
+      <div id="tk-preview" class="ticket-preview" aria-live="polite"></div>
+      <p class="hint">Le ticket rejoint les signaux en attente ci-dessous : rien ne part sans votre approbation, et le gestionnaire de risques re-vérifie tout à ce moment.</p>
+    </section>
+
     <section class="card span-8" aria-labelledby="t-signals">
       <div class="card-head">
         <h2 id="t-signals">Signaux en attente</h2>

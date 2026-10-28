@@ -138,6 +138,16 @@ apparaissent (§8.5), et que « Décision » liste les stratégies applicables. 
 **12.5 Sécurité** : copier l'adresse du dashboard dans un autre navigateur (sans cookie) -> « Session expirée ». Relancer
 `dashboard` -> le nouveau code fonctionne UNE fois (le recoller dans l'adresse échoue).
 
+## 13. Ticket d'ordre guidé
+**13.0 Sans MetaTrader** : `python -m orionx.main demo-dashboard`, carte « Ticket d'ordre guidé » : choisir Achat/Vente et un stop ; l'estimation
+(risque maximal, gain visé, taille) se met à jour en direct. « Préparer le ticket » le place dans les signaux en attente.
+**13.1 Sur MT5 démo** (marché ouvert, `autonomy: semi_auto`, `run --api --dashboard`) : préparer un ticket, vérifier les montants contre votre
+calcul (capital × risque par trade ÷ distance du stop), approuver. Attendu : un seul ordre démo, **avec stop-loss** à la distance demandée
+(onglet Trade de MT5), taille égale à celle annoncée, `TicketPrepared` puis `SignalApproval` (via api) dans `audit-tail`. **Réduire
+`risk_per_trade_pct`** pour l'essai (0,5 % de 100 000 $ = 500 $ de risque, soit plusieurs lots) ; une baisse s'applique tout de suite.
+**13.2 Refus attendus** : stop de 3 ou de 500 pips, gain visé de 0,5, mode `signals_only` (409), plus de 3 tickets en attente, agent arrêté ;
+chaque refus affiche une phrase claire et ne laisse rien en attente. Le ticket expire au bout de 10 minutes.
+
 ## 7. NE PAS FAIRE avant validation complète
 Activer `autonomy: auto` + `--allow-auto`. Cette étape ne vient qu'après : étapes 1 à 6 OK, une semaine de
 fonctionnement en signaux seuls, revue de code des modules `risk/`, `execution/`, `monitoring/` par les deux
