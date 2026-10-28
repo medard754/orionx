@@ -169,7 +169,7 @@
  "analyse-du-marche-en-six": "Análisis del mercado en seis pestañas, ticket de orden guiado, señales explicadas en lenguaje sencillo con los importes en juego.",
  "analyse-du-marche-tendance-momentum": "<strong>Análisis del mercado.</strong> Tendencia, momentum, volatilidad, niveles, sesión y decisión del agente: una lectura del estado del mercado, nunca un consejo.",
  "ticket-d-ordre-guide-vous": "<strong>Ticket de orden guiado.</strong> Usted elige el sentido y el stop; ORIONX calcula el tamaño, muestra lo que arriesga y verifica sus límites.",
- "signaux-expliques-pourquoi-ce-signal": "<strong>Señales explicadas.</strong> Por qué esta señal, cuánto arriesga, cuánto puede ganar y el veredicto del gestor de riesgos.",
+ "signaux-expliques-pourquoi-ce-signal": "<strong>Señales explicadas.</strong> Por qué esta señal, lo máximo que puede perder, la ganancia objetivo si sale bien (nunca garantizada) y el veredicto del gestor de riesgos.",
  "donnees-de-demonstration-simulees-le": "Datos de demostración simulados. El panel está disponible por ahora solo en francés.",
  "comment-ca-marche": "Cómo funciona",
  "trois-etapes-zero-boite-noire": "Tres pasos, <span class=\"grad\">cero caja negra</span>.",
