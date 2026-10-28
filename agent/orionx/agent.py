@@ -44,7 +44,7 @@ from orionx.core.events import (
     TradeProposed,
     TradeRejected,
 )
-from orionx.core.models import AccountState, Bar, OrderResult, Position, SymbolSpec, TradeProposal, utcnow
+from orionx.core.models import AccountState, Bar, OrderResult, Position, Side, SymbolSpec, TradeProposal, utcnow
 from orionx.data.engine import MarketData, MarketStore
 from orionx.decision.engine import Candidate, DecisionEngine, EngineResult, StrategyEntry
 from orionx.execution.executor import Executor
@@ -70,6 +70,16 @@ class CycleReport:
     orders: int = 0
     actions: list[str] = field(default_factory=list)
     error: str | None = None
+
+
+MAX_PENDING_TICKETS = 3  # tickets guidés en attente en même temps : l'utilisateur décide, il ne mitraille pas
+TICKET_MIN_PIPS, TICKET_MAX_PIPS = 5.0, 200.0  # distance du stop : assez loin pour le courtier, assez près pour rester un stop
+TICKET_MIN_RR, TICKET_MAX_RR = 1.0, 5.0
+TICKET_VALID_MINUTES = 10
+
+
+class TicketError(OrionxError):
+    """Ticket guidé refusé : le message est écrit pour l'utilisateur."""
 
 
 class Agent:
@@ -165,6 +175,52 @@ class Agent:
                 notes_at=notes_at, theses=[(p.ticket, self.thesis.current(p.ticket)) for p in self.last_positions if p.symbol == sym],
             ))  # fmt: skip
         return out
+
+    def _purge_expired(self) -> None:
+        now = self._now_utc()
+        for pid in [pid for pid, p in self.pending.items() if p.valid_until <= now]:
+            del self.pending[pid]
+
+    def build_ticket(self, symbol: str, side: str, sl_pips: float, rr: float) -> TradeProposal:
+        """Construit (sans rien stocker) la proposition d'un ticket guidé : le SENS et la distance du stop viennent de l'utilisateur,
+        la taille sera calculée par le gestionnaire de risques. Refuse tout ce qui est incohérent, avec un message clair."""
+        if self.aborted:
+            raise TicketError(f"L'agent est arrêté ({self.aborted}) : aucun ticket possible.")
+        if self.autonomy == "signals_only":
+            raise TicketError("L'agent est en mode signaux seuls : il n'envoie jamais d'ordre. "
+                              "Passez en semi-auto pour utiliser le ticket.")
+        if symbol not in self.cfg.symbols:
+            raise TicketError(f"Symbole non suivi par l'agent : {symbol} (disponibles : {', '.join(self.cfg.symbols)}).")
+        if side not in ("buy", "sell"):
+            raise TicketError("Le sens doit être « achat » ou « vente ».")
+        if not (TICKET_MIN_PIPS <= sl_pips <= TICKET_MAX_PIPS):  # refuse aussi NaN (comparaison fausse)
+            raise TicketError(f"Le stop-loss est obligatoire, entre {TICKET_MIN_PIPS:g} et {TICKET_MAX_PIPS:g} pips (reçu : {sl_pips}).")
+        if not (TICKET_MIN_RR <= rr <= TICKET_MAX_RR):
+            raise TicketError(f"Le rapport gain/risque doit être entre {TICKET_MIN_RR:g} et {TICKET_MAX_RR:g} (reçu : {rr}).")
+        tick, spec = self.market.last.get(symbol), self.specs.get(symbol)
+        if tick is None or spec is None:
+            raise TicketError("Pas encore de prix pour ce symbole : réessayez dans un instant.")
+        pip = spec.point * 10
+        buy = side == "buy"
+        entry = tick.ask if buy else tick.bid
+        sl = entry - sl_pips * pip if buy else entry + sl_pips * pip
+        tp = entry + rr * sl_pips * pip if buy else entry - rr * sl_pips * pip
+        now = self._now_utc()
+        return TradeProposal(f"ticket-{int(now.timestamp() * 1000)}", symbol, Side(side),
+                             round(sl, spec.digits), round(tp, spec.digits), 0.0,
+                             "ticket_manuel", ("trade décidé par vous", f"stop à {sl_pips:g} pips, objectif à {rr:g} fois le risque"),
+                             now, now + timedelta(minutes=TICKET_VALID_MINUTES))  # fmt: skip
+
+    def propose_manual(self, symbol: str, side: str, sl_pips: float, rr: float = 2.0) -> TradeProposal:
+        """Prépare un ticket guidé : il rejoint les signaux en attente et ne part qu'après approbation, comme tout signal
+        (risque ré-évalué, ordre signé, journal d'audit)."""
+        self._purge_expired()
+        if sum(p.strategy == "ticket_manuel" for p in self.pending.values()) >= MAX_PENDING_TICKETS:
+            raise TicketError(f"Déjà {MAX_PENDING_TICKETS} tickets en attente : approuvez ou rejetez-en un d'abord.")
+        proposal = self.build_ticket(symbol, side, sl_pips, rr)
+        self.pending[proposal.id] = proposal
+        self._log("TicketPrepared", {"proposal": proposal, "sl_pips": sl_pips, "rr": rr})
+        return proposal
 
     def preview_signal(self, proposal: TradeProposal) -> dict[str, Any]:
         """Ce que le risque ferait de ce signal maintenant, avec les montants en jeu. Lecture seule : n'envoie ni n'enregistre rien."""

@@ -191,7 +191,8 @@ class RealServerWebSocketTests(unittest.IsolatedAsyncioTestCase):
             await asyncio.wait_for(task, 5)
             with self.assertRaises(websockets.ConnectionClosed) as ctx:
                 await asyncio.wait_for(ws.recv(), 5)
-            self.assertEqual(ctx.exception.rcvd.code if ctx.exception.rcvd else None, 1001)
+            # 1001 (« je pars », notre fermeture) ou 1012 (« redémarrage », celle d'uvicorn) : course de timing, même sens
+            self.assertIn(ctx.exception.rcvd.code if ctx.exception.rcvd else None, (1001, 1012))
         finally:
             stop.set()
             await asyncio.wait_for(task, 5)

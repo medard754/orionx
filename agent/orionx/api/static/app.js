@@ -455,6 +455,11 @@ async function refreshAnalysis() {
     analysis.symbol = analysis.symbol && symbols.includes(analysis.symbol) ? analysis.symbol : symbols[0];
     select.value = analysis.symbol;
     select.hidden = symbols.length < 2;
+    const tk = $("tk-symbol");
+    if (tk.options.length !== symbols.length) {
+      tk.replaceChildren(...symbols.map((sym) => { const o = el("option", sym); o.value = sym; return o; }));
+      schedulePreview();
+    }
     renderAnalysis();
   } catch (_) { /* l'état général affiche déjà la panne */ }
 }
@@ -477,6 +482,60 @@ for (const t of tabs) t.addEventListener("click", () => history.replaceState(nul
 if (tabFromHash()) selectTab(tabFromHash(), false);
 refreshAnalysis();
 setInterval(refreshAnalysis, 5000);
+
+// --- Ticket d'ordre guidé -----------------------------------------------------------------------------
+const ticketBody = () => ({
+  symbol: $("tk-symbol").value,
+  side: document.querySelector('input[name="tk-side"]:checked').value,
+  sl_pips: Number($("tk-sl").value),
+  rr: Number($("tk-rr").value),
+});
+
+function ticketMessage(text) {
+  const box = $("tk-preview");
+  box.replaceChildren(el("div", text, "ticket-error"));
+}
+
+async function ticketCall(path) {
+  const r = await fetch(path, { method: "POST", credentials: "same-origin",
+    headers: { ...CSRF, "Content-Type": "application/json" }, body: JSON.stringify(ticketBody()) });
+  if (r.status === 401) { sessionLost = true; banner("Session expirée : relancez « python -m orionx.main dashboard »."); throw new Error("401"); }
+  const data = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(typeof data.detail === "string" ? data.detail : "Demande invalide : vérifiez le stop (5 à 200 pips) et le gain visé (1 à 5).");
+  return data;
+}
+
+let ticketTimer = null;
+async function previewTicket() {
+  if (sessionLost || !$("tk-symbol").value) return;
+  try {
+    const s = await ticketCall("/api/tickets/preview");
+    const row = explainRow(s).querySelector(".explain");
+    const box = $("tk-preview");
+    box.replaceChildren(row);
+  } catch (e) {
+    if (!sessionLost) ticketMessage(e.message);
+  }
+}
+function schedulePreview() { clearTimeout(ticketTimer); ticketTimer = setTimeout(previewTicket, 350); } // attend la fin de la saisie
+
+$("ticket").addEventListener("input", schedulePreview);
+$("ticket").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const b = ticketBody();
+  if (!window.confirm(`Préparer un ticket ${b.side === "buy" ? "d'ACHAT" : "de VENTE"} sur ${b.symbol}, stop à ${b.sl_pips} pips ? `
+    + "Il rejoindra les signaux en attente : rien ne part avant votre approbation.")) return;
+  $("tk-go").disabled = true;
+  try {
+    await ticketCall("/api/tickets");
+    $("tk-preview").replaceChildren(el("div", "Ticket préparé : approuvez-le ou rejetez-le dans « Signaux en attente » ci-dessous.", "verdict yes"));
+    refresh();
+  } catch (err) {
+    ticketMessage(err.message);
+  } finally {
+    $("tk-go").disabled = false;
+  }
+});
 
 $("beginner").addEventListener("click", () => {
   beginner = !beginner;

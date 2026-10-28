@@ -295,3 +295,25 @@ abbr[title] { text-decoration: underline dotted rgba(0, 217, 248, .6); text-unde
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; }
 }
+
+/* --- ticket d'ordre guidé ------------------------------------------------------------------ */
+.ticket { display: flex; flex-wrap: wrap; gap: 14px; align-items: flex-end; }
+.field { display: grid; gap: 6px; min-width: 150px; border: 0; padding: 0; margin: 0; }
+.field > span, .field > legend { padding: 0; font-size: 11px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+.input { font: inherit; font-size: 15px; font-weight: 600; width: 130px; color: var(--text); background: var(--surface-2); border: 1px solid var(--line-strong);
+  border-radius: 10px; padding: 8px 12px; font-variant-numeric: tabular-nums; }
+.input:focus-visible { outline: 2px solid var(--cyan); outline-offset: 2px; }
+.sides { display: flex; gap: 8px; }
+.sides legend { margin-bottom: 6px; }
+.side { position: relative; cursor: pointer; }
+.side input { position: absolute; opacity: 0; inset: 0; cursor: pointer; }
+.side span { display: block; padding: 9px 20px; border-radius: 10px; font-weight: 650; color: var(--silver); background: var(--surface-2);
+  border: 1px solid var(--line-strong); transition: background .2s, box-shadow .2s, color .2s; }
+.side.buy input:checked + span { color: #021022; background: linear-gradient(120deg, var(--teal), var(--cyan)); box-shadow: 0 0 16px rgba(1, 247, 244, .4); }
+.side.sell input:checked + span { color: #1d0f00; background: linear-gradient(120deg, var(--gold), var(--orange)); box-shadow: 0 0 16px rgba(255, 166, 48, .4); }
+.side input:focus-visible + span { outline: 2px solid var(--cyan); outline-offset: 2px; }
+.ticket-preview { margin-top: 14px; }
+.ticket-preview:empty { display: none; }
+.ticket-preview .explain { grid-template-columns: minmax(230px, 1fr) 2fr; }
+.ticket-preview .why p { font-size: 13px; }
+.ticket-error { margin-top: 14px; padding: 10px 14px; border-radius: 10px; color: #ffd6de; background: rgba(255, 92, 122, .12); border: 1px solid rgba(255, 92, 122, .5); }
