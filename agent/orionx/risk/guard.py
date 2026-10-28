@@ -48,7 +48,7 @@ def is_riskier(old: RiskConfig, new: RiskConfig) -> bool:
 
 @dataclass(frozen=True)
 class RiskChange:
-    status: str  # "immediate" | "delayed" | "unchanged"
+    status: str  # "immediate" | "delayed" | "unchanged" | "cancelled"
     effective_at: datetime | None
     note: str
 
@@ -104,9 +104,12 @@ class RiskParamGuard:
         current = self.active()
         now = self._clock()
         if current is None or new == current:
+            had_pending = self.pending() is not None
             self.cancel_pending()
             if current is None:
                 self._set_active(new)
+            if had_pending:  # revenir à la config active annule la demande en attente : il faut le dire
+                return RiskChange("cancelled", None, "demande en attente annulée, la configuration active est conservée")
             return RiskChange("unchanged", None, "aucun changement")
         if is_riskier(current, new):
             when = now + self._latency
