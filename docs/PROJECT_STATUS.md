@@ -68,6 +68,8 @@ Dernière mise à jour : 27 oct. 2026 · Phase : validation M3 à M7 sur MT5 dé
   journal d'audit, `signals_only` refusé, 3 tickets au plus, expiration 10 min). L'agent n'a pas d'avis sur la direction. Démo uniquement ;
   chemin vers un usage réel prudent (docs/validation, RUNBOOK §13).
 
+- [~] **ADR 0009 (brouillon) : conditions d'ouverture du mode réel** (30 oct. 2026) : neuf portes à franchir (validations démo complètes, première phase en copilote manuel, coûts réels mesurés, relecture humaine externe, limites strictes, déverrouillage à verrous cumulés, répétition, retour automatique à la prudence, périmètre juridique). **Ne change aucun comportement** ; passage à « accepté » par une décision séparée, au moins 7 jours après.
+
 ## À faire (ordre recommandé)
 
 | ID | Tâche | Preuve que c'est fini |
