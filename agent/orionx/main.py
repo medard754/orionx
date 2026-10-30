@@ -407,6 +407,30 @@ def audit_cmd(tail: bool) -> int:
     return 0 if r.ok else 1
 
 
+async def signals_report_cmd(cost_pips: float, horizon: int) -> int:
+    """Rejoue les signaux du journal sur les bougies suivantes (lecture seule : aucun ordre, aucune écriture)."""
+    from orionx.audit.log import AuditLog
+    from orionx.signals_report import run_report
+
+    if not AUDIT_DB.exists():
+        print(f"Aucun journal ({AUDIT_DB}).")
+        return 2
+    gw = _mt5_gateway()
+    if gw is None:
+        print("MetaTrader5 non installé : le rejeu a besoin des bougies du terminal (pip install -e \".[mt5]\").")
+        return 2
+    audit = AuditLog(AUDIT_DB)
+    try:
+        await gw.connect()
+        try:
+            return await run_report(gw, audit.read(("TradeProposed", "SignalContext", "TradeRejected", "TradeApproved")),
+                                    cost_pips=cost_pips, max_bars=horizon)
+        finally:
+            await gw.shutdown()
+    finally:
+        audit.close()
+
+
 async def state_cmd(cfg: AppConfig) -> int:
     from orionx.analysis.calendar import EconomicCalendar
     from orionx.analysis.state import analyze
@@ -631,7 +655,7 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="orionx")
     commands = ["simulate", "mt5-check", "demo-trade", "run", "kill", "clear-kill", "audit-verify", "audit-tail",
                 "backtest", "state", "risk-set", "risk-status", "risk-check", "alert-setup", "alert-test", "dashboard",
-                "demo-dashboard"]  # fmt: skip
+                "demo-dashboard", "signals-report"]  # fmt: skip
     parser.add_argument("command", choices=commands)
     parser.add_argument("--yes", action="store_true", help="demo-trade : ne pas demander confirmation")
     parser.add_argument("--hold", type=float, default=10.0, help="demo-trade : secondes avant fermeture")
@@ -655,6 +679,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--csv", type=Path, default=None, help="backtest : exporte les trades en CSV")
     parser.add_argument("--h1", action="store_true", help="backtest : protocole H-1/V-3 (réserve de 6 mois jamais évaluée ici)")
     parser.add_argument("--h2", action="store_true", help="backtest : protocole H-2 (docs/validation/H-2_protocole.md)")
+    parser.add_argument("--cost-pips", type=float, default=1.0, help="signals-report : coût supplémentaire par trade, en pips")
+    parser.add_argument("--horizon", type=int, default=48, help="signals-report : bougies maximum avant « non résolu »")
     parser.add_argument("--visible", action="store_true", help="alert-setup : saisie du jeton visible (si le collage invisible échoue)")
     parser.add_argument("--open-holdout", default=None, metavar="FILTRE",
                         help="backtest --h1 : ouvre la réserve UNE fois, pour le candidat désigné")
@@ -686,6 +712,8 @@ def main(argv: list[str] | None = None) -> int:
         return risk_cmd(args.command, args.profile)
     if args.command == "state":
         return asyncio.run(state_cmd(cfg))
+    if args.command == "signals-report":
+        return asyncio.run(signals_report_cmd(args.cost_pips, args.horizon))
     if args.command == "backtest":
         if args.h1:
             return asyncio.run(h1_cmd(args.symbol, args.open_holdout, cfg))

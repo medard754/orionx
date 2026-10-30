@@ -113,6 +113,12 @@ class AuditLog:
             rows = self._db.execute("SELECT id, ts, kind, payload FROM audit ORDER BY id DESC LIMIT ?", (n,)).fetchall()
         return [{"id": i, "ts": ts, "kind": k, "payload": json.loads(p)} for i, ts, k, p in reversed(rows)]
 
+    def read(self, kinds: tuple[str, ...] | None = None) -> list[dict[str, Any]]:
+        """Toutes les entrées (ou celles des types demandés), de la plus ancienne à la plus récente."""
+        with self._lock:
+            rows = self._db.execute("SELECT id, ts, kind, payload FROM audit ORDER BY id").fetchall()
+        return [{"id": i, "ts": ts, "kind": k, "payload": json.loads(p)} for i, ts, k, p in rows if kinds is None or k in kinds]
+
     def count(self) -> int:
         with self._lock:
             return int(self._db.execute("SELECT COUNT(*) FROM audit").fetchone()[0])
@@ -126,7 +132,7 @@ def audited_events() -> tuple[type, ...]:
     from orionx.core import events as ev
 
     return (
-        ev.TradeProposed, ev.TradeApproved, ev.TradeRejected, ev.OrderFilled, ev.OrderFailed,
+        ev.TradeProposed, ev.SignalContext, ev.TradeApproved, ev.TradeRejected, ev.OrderFilled, ev.OrderFailed,
         ev.CircuitBreakerTripped, ev.KillSwitchActivated, ev.DataStale, ev.DataRecovered, ev.PositionAdjusted,
         ev.MarketStateUpdated, ev.ThesisDegraded, ev.ExecutionQuality, ev.DecisionNote,
     )  # fmt: skip

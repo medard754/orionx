@@ -150,6 +150,21 @@ calcul (capital × risque par trade ÷ distance du stop), approuver. Attendu : u
 **13.2 Refus attendus** : stop de 3 ou de 500 pips, gain visé de 0,5, mode `signals_only` (409), plus de 3 tickets en attente, agent arrêté ;
 chaque refus affiche une phrase claire et ne laisse rien en attente. Le ticket expire au bout de 10 minutes.
 
+## 14. V-4 : une semaine de signaux seuls, puis rejeu
+**But** : mesurer, EN DIRECT, ce que valent les signaux de l'agent. Les signaux sont émis avant que le marché bouge : pas de biais de sélection,
+contrairement à un backtest. **Aucun ordre n'est envoyé.**
+1. `autonomy: signals_only` dans `config.yaml`, démo connecté, puis `python -m orionx.main run --api --dashboard` (cycle par défaut) ; laisser tourner
+   toute la semaine, PC allumé et MT5 ouvert (les arrêts et reconnexions sont normaux, voir §9). Chaque signal est écrit dans le journal avec son prix
+   d'entrée de référence et sa bougie d'ancrage (`SignalContext`).
+2. Après plusieurs jours (**au moins 30 signaux résolus**, sinon rien à conclure) : `python -m orionx.main signals-report`. Lecture seule : aucun ordre,
+   aucune écriture. Options : `--cost-pips 1.0` (coût par trade, le démo MetaQuotes n'a ni spread ni commission), `--horizon 48` (bougies avant « non résolu »).
+3. Le rapport donne : signaux, résolus, taux de réussite, gain moyen en R **avec son incertitude (± 1,96 erreur-type)**, facteur de profit, par stratégie, puis une
+   conclusion prudente. Règles fixées AVANT de regarder (principe n°10) : sortie au premier contact stop/objectif, stop compté si les deux sont dans la même
+   bougie, vente payée à l'ask, aucun trade non résolu compté comme un gain.
+4. **Critère de lecture** : gain moyen > 0 ET intervalle ne contenant pas 0 ET facteur de profit > 1,2, sur ≥ 30 signaux. Même alors, ce n'est PAS une preuve : refaire
+   sur une autre période et avec de vrais spreads avant tout usage réel.
+**Attendu aujourd'hui** : `trend_pullback` n'a aucun avantage démontré (H-1, H-2) : le rapport devrait le confirmer. C'est un résultat utile, pas un échec.
+
 ## 7. NE PAS FAIRE avant validation complète
 Activer `autonomy: auto` + `--allow-auto`. Cette étape ne vient qu'après : étapes 1 à 6 OK, une semaine de
 fonctionnement en signaux seuls, revue de code des modules `risk/`, `execution/`, `monitoring/` par les deux

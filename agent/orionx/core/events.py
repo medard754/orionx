@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import datetime
 
 from orionx.core.models import ApprovedOrder, Bar, OrderResult, Tick, TradeProposal
 
@@ -10,6 +11,19 @@ from orionx.core.models import ApprovedOrder, Bar, OrderResult, Tick, TradePropo
 @dataclass(frozen=True)
 class TradeProposed:
     proposal: TradeProposal
+
+
+@dataclass(frozen=True)
+class SignalContext:
+    """Ce qu'il faut pour REJOUER un signal plus tard (`signals-report`) : prix d'entrée de référence et bougie d'ancrage.
+    `anchor_bar` est l'heure (courtier) de la dernière bougie fermée au moment du signal : on ne la compare jamais à l'horloge locale."""
+
+    proposal_id: str
+    symbol: str
+    timeframe: str
+    anchor_bar: datetime
+    entry: float  # achat : ask ; vente : bid, au moment du signal
+    spread: float  # ask - bid au moment du signal (unités de prix)
 
 
 @dataclass(frozen=True)
