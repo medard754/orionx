@@ -14,7 +14,7 @@ REF = re.compile(r'(?:href|src)="([^"]+)"')
 class SiteTests(unittest.TestCase):
     def test_expected_pages_exist(self) -> None:
         names = {p.name for p in PAGES}
-        for page in ("index.html", "abonnement.html", "a-propos.html", "contact.html", "connexion.html"):
+        for page in ("index.html", "abonnement.html", "a-propos.html", "contact.html", "connexion.html", "mentions-legales.html"):
             self.assertIn(page, names)
 
     def test_every_internal_link_and_image_exists(self) -> None:
@@ -132,6 +132,31 @@ class SiteLanguageTests(unittest.TestCase):
         for m in re.finditer(r"<img\b[^>]*assets/galerie-[^>]*>", index):
             self.assertRegex(m.group(0), r'alt="[^"]{20,}"', "capture sans description")
         self.assertIn("disponible en français", index, "dire que le tableau de bord n'est pas traduit")
+
+
+@unittest.skipUnless(SITE.is_dir(), "dossier site/ absent")
+class LegalPageTests(unittest.TestCase):
+    def setUp(self) -> None:
+        self.html = (SITE / "mentions-legales.html").read_text(encoding="utf-8")
+
+    def test_every_page_links_to_the_legal_notice(self) -> None:
+        for page in PAGES:
+            self.assertIn('href="mentions-legales.html"', page.read_text(encoding="utf-8"), f"{page.name} : lien absent du pied de page")
+
+    def test_the_mandatory_sections_exist(self) -> None:
+        for needle in ("Éditeur du site", "Hébergeur", "GitHub", "Données personnelles", "aucun cookie", "RGPD", "CNIL",
+                       "pas un conseil en investissement", "Droit applicable"):  # fmt: skip
+            self.assertIn(needle, self.html, f"mention manquante : {needle}")
+
+    def test_the_legal_text_stays_in_french_and_is_not_machine_translated(self) -> None:
+        body = self.html.split("<!--i18n-off-->")[1].split("<!--/i18n-off-->")[0]
+        self.assertNotIn("data-i18n", body, "texte juridique : une seule version, en français, qui fait foi")
+        self.assertIn("seule version faisant foi", body)
+
+    def test_unfilled_fields_are_marked_and_countable(self) -> None:
+        # Avant publication publique, ces champs doivent être remplis : `grep "À COMPLÉTER" site/` doit ne rien renvoyer.
+        todo = re.findall(r"\[À COMPLÉTER[^\]]*\]", self.html)
+        self.assertEqual(self.html.count("[À COMPLÉTER"), len(todo), "marqueur mal formé")
 
 
 if __name__ == "__main__":

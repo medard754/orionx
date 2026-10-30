@@ -11,6 +11,7 @@ ni ressource externe, aucun traceur. Pour le déployer, on envoie **ce dossier t
 | `abonnement.html` | Offres Démo / Pro / Équipe, questions fréquentes |
 | `a-propos.html` | Mission, principes, état du projet |
 | `contact.html` | Formulaire (prépare un e-mail dans la messagerie du visiteur) |
+| `mentions-legales.html` | Mentions légales (LCEN, RGPD) : texte français seul, champs à compléter marqués `[À COMPLÉTER …]` |
 | `connexion.html` | « Se connecter » : espace client à venir, tableau de bord local en attendant |
 | `assets/` | Style (`site.css`), scripts (`site.js`, `i18n.js`, `core3d.js`), traductions (`i18n/`), logo, icône, aperçus et galerie du tableau de bord |
 
@@ -83,3 +84,9 @@ masqué, et reste fixe si le système demande moins de mouvement (`prefers-reduc
 
 Les images `apercu-*.png` et `galerie-*.png` viennent de `demo-dashboard` (agent et courtier simulés) : lancer le dashboard de
 démonstration, capturer avec Edge en mode sans fenêtre, puis recadrer. Refaire les captures à chaque changement visible du dashboard.
+
+## Mentions légales : à compléter AVANT toute mise en ligne
+
+`site/mentions-legales.html` contient 4 champs `[À COMPLÉTER …]` (éditeur, adresse, e-mail, directeur de la publication). Les remplir, puis
+vérifier que `grep "À COMPLÉTER" site/*.html` ne renvoie plus rien. Le texte est un modèle de bonne foi, **pas un avis juridique** : le faire relire
+(voir `docs/PROJECT_STATUS.md`, « Avis juridique »). Le texte reste en français dans les trois langues (une seule version qui fait foi).

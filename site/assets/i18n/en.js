@@ -195,5 +195,8 @@
  "illustration-animee-un-reseau-neuronal": "Animated illustration: a 3D neural network surrounded by a risk-control perimeter that trade ideas either cross or fail to reach.",
  "onglet-seance-et-annonces-de": "Session and announcements tab of the market analysis: London session, spread, announcement window and next economic announcement.",
  "ticket-d-ordre-guide-vous-2": "Guided order ticket: you choose the direction and the stop-loss, ORIONX calculates the size and shows the maximum risk in dollars.",
- "signal-en-attente-avec-la": "Pending signal with the “Why this signal” card: maximum loss, target gain, lot size and the risk manager's verdict."
+ "signal-en-attente-avec-la": "Pending signal with the “Why this signal” card: maximum loss, target gain, lot size and the risk manager's verdict.",
+ "mentions-legales": "Legal notice",
+ "mentions-legales-orionx": "Legal notice · ORIONX",
+ "mentions-legales-du-site-orionx": "ORIONX website legal notice: publisher, host, personal data, risk warning."
 };

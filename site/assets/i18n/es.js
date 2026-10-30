@@ -195,5 +195,8 @@
  "illustration-animee-un-reseau-neuronal": "Ilustración animada: una red neuronal en 3D rodeada de un perímetro de control de riesgo que las ideas de operación atraviesan o no llegan a alcanzar.",
  "onglet-seance-et-annonces-de": "Pestaña Sesión y anuncios del análisis del mercado: sesión de Londres, spread, ventana de anuncio y próximo anuncio económico.",
  "ticket-d-ordre-guide-vous-2": "Ticket de orden guiado: usted elige el sentido y el stop-loss, ORIONX calcula el tamaño y muestra el riesgo máximo en dólares.",
- "signal-en-attente-avec-la": "Señal pendiente con la tarjeta «Por qué esta señal»: pérdida máxima, ganancia objetivo, tamaño del lote y veredicto del gestor de riesgos."
+ "signal-en-attente-avec-la": "Señal pendiente con la tarjeta «Por qué esta señal»: pérdida máxima, ganancia objetivo, tamaño del lote y veredicto del gestor de riesgos.",
+ "mentions-legales": "Aviso legal",
+ "mentions-legales-orionx": "Aviso legal · ORIONX",
+ "mentions-legales-du-site-orionx": "Aviso legal del sitio ORIONX: editor, alojamiento, datos personales y advertencia de riesgo."
 };
