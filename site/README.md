@@ -10,7 +10,6 @@ ni ressource externe, aucun traceur. Pour le déployer, on envoie **ce dossier t
 | `index.html` | Produit (accueil) : héro 3D, fonctionnalités, étapes, téléchargement |
 | `abonnement.html` | Offres Démo / Pro / Équipe, questions fréquentes |
 | `a-propos.html` | Mission, principes, état du projet |
-| `contact.html` | Formulaire (prépare un e-mail dans la messagerie du visiteur) |
 | `mentions-legales.html` | Mentions légales (LCEN, RGPD) : texte français seul, champs à compléter marqués `[À COMPLÉTER …]` |
 | `connexion.html` | « Se connecter » : espace client à venir, tableau de bord local en attendant |
 | `assets/` | Style (`site.css`), scripts (`site.js`, `i18n.js`, `core3d.js`), traductions (`i18n/`), logo, icône, aperçus et galerie du tableau de bord |
@@ -27,10 +26,10 @@ python -m http.server 8080
 
 ## Avant de publier : à faire OBLIGATOIREMENT
 
-1. **Adresse de contact** : remplacer `contact@orionx.example` dans `assets/site.js` (constante `CONTACT_EMAIL`).
+1. **Aucune page Contact, aucun formulaire** (décision du propriétaire, 30 oct. 2026) : le site ne collecte aucune donnée. Les boutons d'inscription affichent « Bientôt disponible ». L'adresse e-mail n'apparaît que dans les mentions légales (obligation de la LCEN).
 2. **Mentions légales** (loi française LCEN, obligatoire pour tout site publié) : ajouter une page avec l'éditeur (nom ou raison
-   sociale, adresse, contact), le directeur de la publication et l'hébergeur. Si des e-mails sont collectés (liste d'attente),
-   ajouter une **politique de confidentialité** (RGPD).
+   sociale, adresse, e-mail), le directeur de la publication et l'hébergeur : fait, **4 champs `[À COMPLÉTER]` restent à remplir**.
+   Si un jour des e-mails sont collectés (liste d'attente), ajouter une **politique de confidentialité** (RGPD).
 3. **Avis juridique** : la publicité pour des produits de trading est encadrée (AMF). Faire relire les textes et l'avertissement
    sur les risques présent en pied de chaque page.
 4. **Marque** : vérifier la disponibilité du nom ORIONX (marque, domaine) avant d'acheter un nom de domaine.

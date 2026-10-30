@@ -14,7 +14,7 @@ REF = re.compile(r'(?:href|src)="([^"]+)"')
 class SiteTests(unittest.TestCase):
     def test_expected_pages_exist(self) -> None:
         names = {p.name for p in PAGES}
-        for page in ("index.html", "abonnement.html", "a-propos.html", "contact.html", "connexion.html", "mentions-legales.html"):
+        for page in ("index.html", "abonnement.html", "a-propos.html", "connexion.html", "mentions-legales.html"):
             self.assertIn(page, names)
 
     def test_every_internal_link_and_image_exists(self) -> None:
@@ -34,6 +34,14 @@ class SiteTests(unittest.TestCase):
     def test_every_page_carries_the_risk_warning(self) -> None:
         for page in PAGES:
             self.assertIn("Avertissement sur les risques", page.read_text(encoding="utf-8"), page.name)
+
+    def test_no_contact_page_no_form_no_mailto(self) -> None:
+        # Décision du propriétaire (30 oct. 2026) : aucun moyen de contact sur le site, donc aucune donnée collectée.
+        self.assertFalse((SITE / "contact.html").exists())
+        for path in [*PAGES, SITE / "assets" / "site.js"]:
+            text = path.read_text(encoding="utf-8")
+            for forbidden in ("contact.html", "<form", "mailto:", "liste d'attente"):
+                self.assertNotIn(forbidden, text, f"{path.name} : « {forbidden} » (pas de contact sur le site)")
 
     def test_no_credential_collection(self) -> None:
         for page in PAGES:

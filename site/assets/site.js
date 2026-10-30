@@ -3,9 +3,6 @@
 
 document.documentElement.classList.add("js"); // les animations d'apparition ne masquent le contenu que si ce script tourne
 
-// À REMPLACER avant publication : adresse qui reçoit les messages du formulaire de contact.
-const CONTACT_EMAIL = "contact@orionx.example";
-
 // Menu sur mobile
 const nav = document.querySelector(".nav");
 const burger = document.querySelector(".burger");
@@ -46,20 +43,6 @@ if (scene && inner && !reduced) {
     inner.style.setProperty("--rx", (-y * 10).toFixed(2));
   });
   scene.addEventListener("pointerleave", () => { inner.style.setProperty("--ry", "0"); inner.style.setProperty("--rx", "0"); });
-}
-
-// Formulaire de contact : pas de serveur, on prépare un e-mail dans la messagerie de l'utilisateur
-const form = document.querySelector("#contact-form");
-if (form) {
-  const params = new URLSearchParams(location.search);
-  const subject = form.querySelector("#sujet");
-  if (subject && params.get("sujet")) subject.value = params.get("sujet");
-  form.addEventListener("submit", (e) => {
-    e.preventDefault();
-    const data = new FormData(form);
-    const body = `${data.get("message")}\n\n${data.get("nom")} <${data.get("email")}>`;
-    location.href = `mailto:${CONTACT_EMAIL}?subject=${encodeURIComponent(`[ORIONX] ${data.get("sujet")}`)}&body=${encodeURIComponent(body)}`;
-  });
 }
 
 // Année du pied de page
