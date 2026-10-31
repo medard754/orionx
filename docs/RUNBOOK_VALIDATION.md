@@ -165,6 +165,16 @@ contrairement à un backtest. **Aucun ordre n'est envoyé.**
    sur une autre période et avec de vrais spreads avant tout usage réel.
 **Attendu aujourd'hui** : `trend_pullback` n'a aucun avantage démontré (H-1, H-2) : le rapport devrait le confirmer. C'est un résultat utile, pas un échec.
 
+## 15. Mémoire de marché (étape 1 de l'agent à mémoire)
+**But** : enregistrer, sur le compte du courtier réel (démo IC Markets), ce que l'agent voit : prix et **spread réel** par minute, états du marché
+(régime, séance, volatilité), fiche des symboles. C'est la matière première de tout apprentissage, et la porte P3 de l'ADR 0009 (coûts réels).
+1. Rien à configurer : `python -m orionx.main run --config config.yaml` enregistre par défaut (`--no-memory` pour couper). Un fichier par serveur de
+   courtier dans `data/memory/` (ex. `icmarketseu-demo.db`) : **les données de deux courtiers ne se mélangent jamais**. Passif, lecture seule, aucun ordre.
+2. Laisser tourner pendant les heures de marché (le week-end, les marchés sont fermés : rien à enregistrer).
+3. `python -m orionx.main memory-report` : courtier, couverture (minutes enregistrées, période), **spread médian et p95 par heure UTC en pips**.
+   Attendu sur Raw Spread : spread très faible, **plus une commission** (non visible ici : à lire sur le compte, historique des deals).
+4. Ne jamais copier un fichier mémoire d'un courtier dans celui d'un autre ; ne pas le versionner (`data/` est ignoré).
+
 ## 7. NE PAS FAIRE avant validation complète
 Activer `autonomy: auto` + `--allow-auto`. Cette étape ne vient qu'après : étapes 1 à 6 OK, une semaine de
 fonctionnement en signaux seuls, revue de code des modules `risk/`, `execution/`, `monitoring/` par les deux

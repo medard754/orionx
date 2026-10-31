@@ -81,6 +81,9 @@ class SimulatedGateway:
         if not self.connected:
             raise GatewayError("terminal déconnecté (simulé)")
 
+    async def broker_info(self) -> dict[str, str]:
+        return {"company": "Simulé", "server": "Simulated", "margin_mode": "hedging", "currency": "USD", "leverage": "100"}
+
     async def get_account(self) -> AccountState:
         self._require()
         unrealized = sum(self._pnl(p) for p in self._positions.values())

@@ -73,6 +73,11 @@ Dernière mise à jour : 27 oct. 2026 · Phase : validation M3 à M7 sur MT5 dé
   stop prioritaire si les deux sont touchés), donne taux de réussite, gain moyen en R avec incertitude et facteur de profit, **refuse de conclure sous 30 signaux
   résolus** et rappelle que ce n'est pas une preuve. Lecture seule, aucun ordre. Règles posées avant de voir les résultats.
 
+- [x] **Mémoire de marché, étape 1** (31 oct. 2026) : l'agent enregistre en continu, dans un fichier par courtier (`data/memory/<serveur>.db`),
+  le prix et le **spread réel par minute**, chaque état de marché et la fiche des symboles. Passif, lecture seule ; actif par défaut (`--no-memory` pour
+  couper) ; `memory-report` résume la couverture et le spread par heure. Prérequis du protocole H-3 et de la porte P3 de l'ADR 0009. La plan complet
+  (modèle de filtrage, assistant de langage) reste à faire, dans cet ordre, après mesures. Touche `connector_mt5/` (méthode `broker_info`, additive) : relecture ADR 0004.
+
 ## À faire (ordre recommandé)
 
 | ID | Tâche | Preuve que c'est fini |

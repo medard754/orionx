@@ -109,6 +109,23 @@ class Mt5Gateway:
 
         return await self._run(f)
 
+    async def broker_info(self) -> dict[str, str]:
+        """Identité du courtier (société, serveur, type de marge) : sert à ne jamais mélanger les données de deux courtiers.
+        Lecture seule ; le numéro de compte n'est volontairement pas inclus."""
+
+        def f() -> dict[str, str]:
+            info = self._mt5.account_info()
+            if info is None:
+                raise GatewayError(f"account_info() a échoué : {self._mt5.last_error()}")
+            margin = {
+                self._mt5.ACCOUNT_MARGIN_MODE_RETAIL_HEDGING: "hedging",
+                self._mt5.ACCOUNT_MARGIN_MODE_RETAIL_NETTING: "netting",
+            }.get(info.margin_mode, str(info.margin_mode))
+            return {"company": str(info.company), "server": str(info.server), "margin_mode": margin,
+                    "currency": str(info.currency), "leverage": str(info.leverage)}  # fmt: skip
+
+        return await self._run(f)
+
     def _symbol_info(self, symbol: str) -> Any:
         info = self._mt5.symbol_info(symbol)
         if info is None or not info.visible:

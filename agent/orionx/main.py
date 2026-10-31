@@ -150,7 +150,7 @@ async def demo_trade(auto_yes: bool, hold: float) -> int:
 
 
 async def run_agent(cfg: AppConfig, allow_auto: bool, cycle: float, max_cycles: int | None, api_port: int | None = None,
-                    open_dashboard: bool = False) -> int:
+                    open_dashboard: bool = False, record_memory: bool = True) -> int:
     from orionx.agent import Agent
     from orionx.audit.log import AuditLog
     from orionx.data.engine import MarketStore
@@ -184,6 +184,18 @@ async def run_agent(cfg: AppConfig, allow_auto: bool, cycle: float, max_cycles: 
     engine = build_engine(cfg.strategies, cfg.decision, cfg.analysis)
     agent = Agent(gw, cfg, engine=engine, risk_guard=RiskParamGuard(DATA_DIR), audit=audit, store=MarketStore(DATA_DIR / "market.db"),
                   calendar=calendar, allow_auto=allow_auto, kill_flag=KILL_FLAG, alerts=alerts, feed=feed)  # fmt: skip
+    memory = None
+    if record_memory:  # mémoire de marché : passive, lecture seule, un fichier par courtier ; ne bloque jamais le démarrage
+        try:
+            from orionx.memory.recorder import MarketMemory, memory_path
+
+            broker = await gw.broker_info() if hasattr(gw, "broker_info") else {}
+            mem_file = memory_path(DATA_DIR, broker)
+            memory = MarketMemory(mem_file, broker, specs=agent.specs)
+            memory.attach(agent.bus)
+            print(f"Mémoire de marché : {mem_file} (courtier : {broker.get('company', '?')} / {broker.get('server', '?')}).")
+        except Exception as exc:  # noqa: BLE001
+            print(f"Mémoire de marché indisponible ({exc}) : l'agent démarre sans.")
     print(f"Stratégies activées : {list(cfg.strategies)} · profil de risque actif : {agent.risk.cfg.risk_per_trade_pct} % par trade.")
     print(f"Agent démarré : autonomie={agent.autonomy}, symboles={cfg.symbols}. Ctrl+C pour arrêter.")
     print("Les positions ouvertes restent protégées par leur stop-loss même si l'agent s'arrête.")
@@ -211,6 +223,8 @@ async def run_agent(cfg: AppConfig, allow_auto: bool, cycle: float, max_cycles: 
             with contextlib.suppress(Exception):
                 await asyncio.wait_for(api_task, timeout=5)
         await gw.shutdown()
+        if memory is not None:
+            memory.close()
         if alerts:
             alerts.close()  # laisse partir les dernières alertes (au plus 30 s, réseau lent)
         print("Agent arrêté.")
@@ -405,6 +419,21 @@ def audit_cmd(tail: bool) -> int:
     r = log.verify()
     print(f"Journal : {r.checked} entrées vérifiées -> {'INTÈGRE' if r.ok else f'ALTÉRÉ ({r.reason}, ligne {r.first_bad_id})'}")
     return 0 if r.ok else 1
+
+
+def memory_report_cmd() -> int:
+    """Résume la mémoire de marché de chaque courtier (couverture, spread réel par heure). Lecture seule."""
+    from orionx.memory.recorder import render_report
+
+    files = sorted((DATA_DIR / "memory").glob("*.db"))
+    if not files:
+        print(f"Aucune mémoire enregistrée ({DATA_DIR / 'memory'}) : lancer l'agent avec `run` (l'enregistrement est actif par défaut).")
+        return 2
+    code = 0
+    for f in files:
+        print(f"=== {f.name} ===")
+        code = max(code, render_report(f))
+    return code
 
 
 async def signals_report_cmd(cost_pips: float, horizon: int) -> int:
@@ -655,7 +684,7 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="orionx")
     commands = ["simulate", "mt5-check", "demo-trade", "run", "kill", "clear-kill", "audit-verify", "audit-tail",
                 "backtest", "state", "risk-set", "risk-status", "risk-check", "alert-setup", "alert-test", "dashboard",
-                "demo-dashboard", "signals-report"]  # fmt: skip
+                "demo-dashboard", "signals-report", "memory-report"]  # fmt: skip
     parser.add_argument("command", choices=commands)
     parser.add_argument("--yes", action="store_true", help="demo-trade : ne pas demander confirmation")
     parser.add_argument("--hold", type=float, default=10.0, help="demo-trade : secondes avant fermeture")
@@ -679,6 +708,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--csv", type=Path, default=None, help="backtest : exporte les trades en CSV")
     parser.add_argument("--h1", action="store_true", help="backtest : protocole H-1/V-3 (réserve de 6 mois jamais évaluée ici)")
     parser.add_argument("--h2", action="store_true", help="backtest : protocole H-2 (docs/validation/H-2_protocole.md)")
+    parser.add_argument("--no-memory", action="store_true", help="run : ne pas enregistrer la mémoire de marché (spreads réels, états)")
     parser.add_argument("--cost-pips", type=float, default=1.0, help="signals-report : coût supplémentaire par trade, en pips")
     parser.add_argument("--horizon", type=int, default=48, help="signals-report : bougies maximum avant « non résolu »")
     parser.add_argument("--visible", action="store_true", help="alert-setup : saisie du jeton visible (si le collage invisible échoue)")
@@ -692,7 +722,7 @@ def main(argv: list[str] | None = None) -> int:
     if args.command == "run":
         try:
             return asyncio.run(run_agent(cfg, args.allow_auto, args.cycle, args.max_cycles, args.api_port if args.api else None,
-                                         args.dashboard))
+                                         args.dashboard, record_memory=not args.no_memory))
         except KeyboardInterrupt:
             print("Arrêt demandé par l'utilisateur.")
             return 0
@@ -712,6 +742,8 @@ def main(argv: list[str] | None = None) -> int:
         return risk_cmd(args.command, args.profile)
     if args.command == "state":
         return asyncio.run(state_cmd(cfg))
+    if args.command == "memory-report":
+        return memory_report_cmd()
     if args.command == "signals-report":
         return asyncio.run(signals_report_cmd(args.cost_pips, args.horizon))
     if args.command == "backtest":
