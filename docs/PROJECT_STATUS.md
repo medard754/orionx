@@ -73,6 +73,8 @@ Dernière mise à jour : 27 oct. 2026 · Phase : validation M3 à M7 sur MT5 dé
   stop prioritaire si les deux sont touchés), donne taux de réussite, gain moyen en R avec incertitude et facteur de profit, **refuse de conclure sous 30 signaux
   résolus** et rappelle que ce n'est pas une preuve. Lecture seule, aucun ordre. Règles posées avant de voir les résultats.
 
+- [~] **H-3, préparation** (3 nov. 2026) : `docs/validation/H-3_catalogue_regles_cours.md` range les règles d'un cours de trading (chandeliers, figures, Fibonacci, divergences, étranglement de Bollinger, plan journalier) en candidats testables, avec définitions mécaniques à figer, niveaux témoins, une famille = une hypothèse, coûts réels IC Markets. **Rien n'est testé ni intégré à l'agent** ; martingale exclue. Prochaine étape : écrire `H-3_protocole.md` une fois la mémoire de marché enrichie.
+
 ## À faire (ordre recommandé)
 
 | ID | Tâche | Preuve que c'est fini |
