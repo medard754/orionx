@@ -7,7 +7,7 @@
 1. **On n'intègre pas ces règles « telles quelles » pour renforcer l'agent.** Ce sont des méthodes discrétionnaires, présentées avec des exemples choisis après coup (« chaque prise de position est
    couronnée par un succès », p. 93) et sans aucune statistique. Les ajouter à l'agent, c'est ajouter des hypothèses non testées : le contraire du principe n°10.
 2. **On peut les transformer en hypothèses mesurables.** Chaque règle utile est réécrite comme une définition mécanique, figée avant de regarder les données, puis testée contre le hasard, avec les vrais coûts
-   (spread et commission du compte IC Markets). Seules celles qui passent le protocole deviennent des stratégies.
+   (spread et commission du compte démo Pepperstone). Seules celles qui passent le protocole deviennent des stratégies.
 3. **Beaucoup de ces idées sont déjà dans ORIONX, et ont déjà échoué** (H-1 et H-2 : moyennes mobiles et rebonds, oscillateurs en range, cassures). Les redemander sur les mêmes données, c'est « fouiller le hasard » (H-2 §9.4).
 4. **Une partie du cours est précieuse sans être un signal** : gestion du risque, plan écrit, discipline. ORIONX les applique déjà, en plus strict.
 5. **Une règle du cours est à exclure** : la martingale.
@@ -87,7 +87,7 @@ la plus plausible, et elle servirait à *dimensionner et filtrer*, pas à choisi
 ## 7. Étapes proposées
 
 1. Valider ce catalogue (et retirer ce qui ne vous convient pas).
-2. Laisser la mémoire de marché s'enrichir (plusieurs semaines de spreads IC Markets) et récupérer l'historique du courtier.
+2. Laisser la mémoire de marché s'enrichir (plusieurs semaines de spreads du courtier) et récupérer l'historique du courtier.
 3. Écrire `H-3_protocole.md` : définitions figées, symboles, périodes, tirages aléatoires, seuils, hachage des fichiers (comme H-1 et H-2).
 4. Coder les détecteurs (fonctions pures, testées) et le banc d'essai, **sans toucher** aux stratégies ni au risque.
 5. Lancer, publier le résultat quel qu'il soit.

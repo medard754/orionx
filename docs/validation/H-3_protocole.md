@@ -1,4 +1,4 @@
-# H-3 – Protocole pré-enregistré (règles d'un cours de trading, mécanisées ; plusieurs marchés, coûts réels IC Markets)
+# H-3 – Protocole pré-enregistré (règles d'un cours de trading, mécanisées ; plusieurs marchés, coûts réels Pepperstone)
 
 **Écrit le 3 nov. 2026, AVANT toute mesure de H-3.** Commité et poussé avant l'outillage, avant le gel des données et avant la première exécution : toute modification
 ultérieure doit apparaître dans l'historique git et être justifiée ici. Suite de `H-1_protocole.md` et `H-2_protocole.md` (NO-GO, 7 échecs sur 7). Le catalogue de départ est
@@ -19,7 +19,9 @@ a-t-elle un avantage mesurable, **net des coûts réels**, meilleur que le hasar
 
 ## 2. Données
 
-- **Source unique** : historique de bougies du compte démo IC Markets (serveur **[À FIGER : nom exact du serveur]**), lu avec MetaTrader 5. Les anciennes données MetaQuotes (sans coûts) **ne servent à aucun verdict**.
+- **Source unique** : historique de bougies du compte démo **Pepperstone** (serveur `Pepperstone-Demo`, société Pepperstone Group Limited, compte en USD, Hedging), lu avec MetaTrader 5.
+  **Changement de courtier, décidé le 4 nov. 2026 AVANT toute mesure** : le protocole prévoyait d'abord IC Markets, injoignable depuis ce poste (connexion de trading refusée, nom de serveur d'abord mal saisi, puis VPN actif) ;
+  aucune bougie ni aucun résultat n'avait été lu. Le courtier ne change ni les définitions, ni les seuils, ni le budget de ce protocole. Les anciennes données MetaQuotes (sans coûts) **ne servent à aucun verdict**.
 - **Symboles de décision** : **GBPUSD, USDJPY, AUDUSD, USDCAD**, jamais regardés dans H-1 ni H-2. **EURUSD** est calculé et rapporté pour information, mais **ne compte pas dans la décision** : cette série a déjà
   servi à 7 hypothèses (un résultat flatteur dessus serait suspect).
 - **Unités de temps** : **H1** (familles a à e) et **D1** (famille f). Pas d'autre unité de temps.
@@ -33,7 +35,8 @@ a-t-elle un avantage mesurable, **net des coûts réels**, meilleur que le hasar
 ## 3. Coûts
 
 - **Spread** : celui **enregistré par le courtier pour chaque bougie** (pas un spread fixe). À l'entrée comme à la sortie, un trade paie le spread de la bougie concernée.
-- **Commission** : **[À FIGER : montant par lot et par aller-retour, lu sur un vrai trade démo IC Markets avant le gel]**. Elle est lue dans l'historique des transactions du compte (champ « commission »),
+- **Commission** : **3,50 USD par lot et par côté, soit 7,00 USD par lot et par aller-retour**, mesurée le 4 nov. 2026 sur un vrai trade démo de 1 lot (EURUSD, tickets de transaction 324694148 et 324694155 : « commission -3,5 » à l'entrée
+  et à la sortie ; une mesure à 0,01 lot donnait 0,04 USD par côté, arrondi au centime du même 3,50). Elle est lue dans l'historique des transactions du compte (champ « commission »),
   pas supposée. Si elle n'a pas été lue avant le gel, le gel n'a pas lieu.
 - **Pas de swap** (positions de quelques heures ; pour la famille f, les nuits sont négligées : limite reconnue).
 - **Rendements mesurés en unités d'ATR(14)** du moment, pour comparer des symboles différents.
@@ -95,7 +98,7 @@ Aucun paramètre n'est modifié après le gel : seuils de bougies, définitions 
 ## 9. Ordre des opérations
 
 1. [x] **Écrire ce protocole** et le commiter (ce document, avant toute donnée et tout code d'essai).
-2. [ ] **Lire la commission réelle** d'IC Markets : un trade démo de 0,01 lot (ouverture puis fermeture) sur le compte IC Markets, lecture du champ « commission » de la transaction.
+2. [x] **Lire la commission réelle** : fait le 4 nov. 2026 (3,50 USD par lot et par côté, §3), par un trade démo de 0,01 lot (`demo-trade`) puis de 1 lot.
 3. [ ] **Geler les données** : lecture de l'historique des 5 symboles en H1 et D1, enregistrement en fichiers, calcul des empreintes, remplissage des champs **[À FIGER]** ci-dessus, commit distinct.
 4. [ ] **Coder** les détecteurs et le banc d'essai (`h3.py`) : fonctions pures, testées sur des données synthétiques (par exemple : un avalement construit à la main est détecté, un hasard pur ne passe pas).
    **Sans toucher** aux stratégies existantes ni aux garde-fous du risque.
