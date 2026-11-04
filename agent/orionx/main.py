@@ -407,6 +407,41 @@ def audit_cmd(tail: bool) -> int:
     return 0 if r.ok else 1
 
 
+def h3_freeze_cmd(symbols: str | None, commission: float | None) -> int:
+    """H-3 : gèle l'historique du courtier (fichiers dans data/h3/, manifeste d'empreintes dans docs/validation/). Lecture seule."""
+    import json
+
+    from orionx.backtest import h3_freeze as fz
+
+    try:
+        import MetaTrader5 as mt5
+    except ImportError:
+        print("MetaTrader5 non installé.")
+        return 2
+    if not mt5.initialize(timeout=60000):
+        print(f"MetaTrader 5 injoignable : {mt5.last_error()}")
+        return 2
+    try:
+        account = mt5.account_info()
+        if account is None or account.trade_mode != mt5.ACCOUNT_TRADE_MODE_DEMO:
+            print("REFUS : le gel ne se fait que sur un compte démo.")
+            return 3
+        manifest = fz.freeze(
+            fz.mt5_fetcher(), DATA_DIR / "h3", symbols=tuple(symbols.split(",")) if symbols else fz.DEFAULT_SYMBOLS,
+            server=str(account.server), commission_per_lot_per_side=commission,
+        )  # fmt: skip
+    finally:
+        mt5.shutdown()
+    suspects = {f["file"]: f["suspect_years"] for f in manifest["files"] if f["suspect_years"]}
+    if suspects:
+        print(f"GEL REFUSÉ : années suspectes (lecture incomplète ?) {suspects}. Relancez ; rien n'est écrit dans le manifeste.")
+        return 4
+    target = Path(__file__).resolve().parents[2] / "docs" / "validation" / "H-3_snapshot_manifest.json"
+    target.write_text(json.dumps(manifest, indent=1, ensure_ascii=False) + chr(10), encoding="utf-8")
+    print(f"Manifeste écrit : {target} ({len(manifest['files'])} séries). À commiter AVANT toute mesure.")
+    return 0
+
+
 async def signals_report_cmd(cost_pips: float, horizon: int) -> int:
     """Rejoue les signaux du journal sur les bougies suivantes (lecture seule : aucun ordre, aucune écriture)."""
     from orionx.audit.log import AuditLog
@@ -655,7 +690,7 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="orionx")
     commands = ["simulate", "mt5-check", "demo-trade", "run", "kill", "clear-kill", "audit-verify", "audit-tail",
                 "backtest", "state", "risk-set", "risk-status", "risk-check", "alert-setup", "alert-test", "dashboard",
-                "demo-dashboard", "signals-report"]  # fmt: skip
+                "demo-dashboard", "signals-report", "h3-freeze"]  # fmt: skip
     parser.add_argument("command", choices=commands)
     parser.add_argument("--yes", action="store_true", help="demo-trade : ne pas demander confirmation")
     parser.add_argument("--hold", type=float, default=10.0, help="demo-trade : secondes avant fermeture")
@@ -679,6 +714,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--csv", type=Path, default=None, help="backtest : exporte les trades en CSV")
     parser.add_argument("--h1", action="store_true", help="backtest : protocole H-1/V-3 (réserve de 6 mois jamais évaluée ici)")
     parser.add_argument("--h2", action="store_true", help="backtest : protocole H-2 (docs/validation/H-2_protocole.md)")
+    parser.add_argument("--symbols", default=None, help="h3-freeze : symboles séparés par des virgules")
+    parser.add_argument("--commission", type=float, default=None, help="h3-freeze : commission mesurée, en USD par lot et par côté")
     parser.add_argument("--cost-pips", type=float, default=1.0, help="signals-report : coût supplémentaire par trade, en pips")
     parser.add_argument("--horizon", type=int, default=48, help="signals-report : bougies maximum avant « non résolu »")
     parser.add_argument("--visible", action="store_true", help="alert-setup : saisie du jeton visible (si le collage invisible échoue)")
@@ -712,6 +749,8 @@ def main(argv: list[str] | None = None) -> int:
         return risk_cmd(args.command, args.profile)
     if args.command == "state":
         return asyncio.run(state_cmd(cfg))
+    if args.command == "h3-freeze":
+        return h3_freeze_cmd(args.symbols, args.commission)
     if args.command == "signals-report":
         return asyncio.run(signals_report_cmd(args.cost_pips, args.horizon))
     if args.command == "backtest":
