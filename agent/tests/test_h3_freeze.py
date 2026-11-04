@@ -70,7 +70,8 @@ class FreezeTests(unittest.TestCase):
                         clock=lambda: datetime(2025, 6, 1, tzinfo=UTC), log=lambda _m: None)  # fmt: skip
             self.assertEqual(ok["files"][0]["suspect_years"], [])
             broken = freeze(lambda s, t, y: [] if y == 2024 else full(s, t, y), Path(tmp), symbols=("GBPUSD",), timeframes=("H1",),
-                            first_year=2022, last_year=2025, clock=lambda: datetime(2025, 6, 1, tzinfo=UTC), log=lambda _m: None)  # fmt: skip
+                            first_year=2022, last_year=2025, clock=lambda: datetime(2025, 6, 1, tzinfo=UTC),
+                            log=lambda _m: None)  # fmt: skip
             self.assertEqual(broken["files"][0]["suspect_years"], [2024])
 
     def test_duplicate_bars_are_merged(self) -> None:
