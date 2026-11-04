@@ -3,16 +3,22 @@
 import random
 import unittest
 
+from orionx.backtest.h3 import detect_candlesticks
 from orionx.backtest.h3_bench import (
     FamilyTable,
     SymbolData,
+    block_of,
     build_symbol_data,
     build_table,
     commission_in_price,
+    consistency,
     family_max_test,
     forward_net,
+    judge_directional,
     make_ref,
     point_size,
+    split_dev_reserve,
+    variants_from_detector,
 )
 from orionx.backtest.h3_freeze import Row
 
@@ -122,6 +128,69 @@ class FamilyTestTests(unittest.TestCase):
         pool = self.tables["EURUSD"].strata[ref.stratum]
         self.assertTrue(all(self.sd.hour[i] == ref.stratum[0] and self.sd.tercile[i] == ref.stratum[1] for i in pool))
         self.assertIn(600, pool)
+
+
+class SplitTests(unittest.TestCase):
+    def test_reserve_is_the_last_183_days_and_nothing_overlaps(self) -> None:
+        rows = [(T0 + k * 86400, 1.1, 1.1, 1.1, 1.1, 1, 1) for k in range(400)]
+        dev, reserve = split_dev_reserve(rows)
+        self.assertEqual(len(dev) + len(reserve), 400)
+        self.assertEqual(len(reserve), 184, "les 183 derniers jours, bornes incluses")
+        self.assertLess(dev[-1][0], reserve[0][0])
+        self.assertEqual(split_dev_reserve([]), ([], []))
+
+    def test_blocks_have_equal_duration_and_cover_everything(self) -> None:
+        self.assertEqual([block_of(t, 0, 400) for t in (0, 99, 100, 250, 399, 400)], [0, 0, 1, 2, 3, 3])
+
+
+def planted(symbols: tuple[str, ...], seed: int, n: int = 6000, count: int = 300):  # type: ignore[no-untyped-def]
+    sds, tables, refs = {}, {}, []
+    for k, sym in enumerate(symbols):
+        sd = build_symbol_data(sym, walk(n, seed + k))
+        sds[sym], tables[sym] = sd, build_table(sd, (12,))
+        net = tables[sym].net[(1, 12)]
+        winners = [i for i in range(60, n - 100) if (net[i] or -1) > 0.3]
+        refs += [
+            make_ref(sd, i, 1) for i in sorted(random.Random(seed + k).sample(winners, min(count, len(winners))))
+        ]  # sur toute la période
+    return sds, tables, refs
+
+
+class JudgeTests(unittest.TestCase):
+    SYMBOLS = ("GBPUSD", "USDJPY", "AUDUSD", "USDCAD")
+
+    def test_a_planted_edge_passes_every_criterion(self) -> None:
+        sds, tables, refs = planted(self.SYMBOLS, 10)
+        verdict = judge_directional("test", {("truquee", 12): refs}, sds, tables, decision_symbols=self.SYMBOLS, permutations=200, seed=1)
+        self.assertTrue(verdict.passed, verdict.checks)
+        self.assertGreaterEqual(verdict.consistency.positive_symbols, 3, "le « USDJPY » simulé à 1,10 n'a aucun gagnant : 3 sur 4 suffit")
+
+    def test_candlestick_patterns_on_random_walks_do_not_pass(self) -> None:
+        sds = {s: build_symbol_data(s, walk(6000, 20 + k)) for k, s in enumerate(self.SYMBOLS)}
+        tables = {s: build_table(sd, (4, 12, 24)) for s, sd in sds.items()}
+        variants = variants_from_detector(sds, detect_candlesticks, (4, 12, 24))
+        self.assertGreater(len(variants), 10)
+        verdict = judge_directional("chandeliers", variants, sds, tables, decision_symbols=self.SYMBOLS, permutations=200, seed=3)
+        self.assertFalse(verdict.passed, "des chandeliers sur du hasard pur ne doivent pas passer (coûts compris)")
+
+    def test_too_few_signals_never_pass(self) -> None:
+        sds, tables, refs = planted(self.SYMBOLS, 30, count=20)
+        verdict = judge_directional("rare", {("rare", 12): refs}, sds, tables, decision_symbols=self.SYMBOLS, permutations=50)
+        self.assertFalse(verdict.passed)
+
+    def test_only_decision_symbols_count(self) -> None:
+        sds, tables, refs = planted(("EURUSD", "GBPUSD"), 40)
+        gbp = sum(1 for r in refs if r.symbol == "GBPUSD")
+        verdict = judge_directional("x", {("v", 12): refs}, sds, tables, decision_symbols=("GBPUSD",), permutations=50)
+        assert verdict.result.best is not None
+        self.assertLessEqual(verdict.result.best.signals, gbp, "EURUSD est calculé pour information, il ne compte pas dans la décision")
+
+    def test_consistency_counts_positive_blocks_and_symbols(self) -> None:
+        sds, tables, refs = planted(("GBPUSD",), 50)
+        start, end = sds["GBPUSD"].times[0], sds["GBPUSD"].times[-1]
+        c = consistency(refs, 12, sds, tables, start, end)
+        self.assertEqual(c.positive_symbols, 1)
+        self.assertGreaterEqual(c.positive_blocks, 3)
 
 
 if __name__ == "__main__":

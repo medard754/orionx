@@ -14,11 +14,11 @@ Conventions (figées avant toute mesure) :
 from __future__ import annotations
 
 import random
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime
 
-from orionx.backtest.h3 import atr_series
+from orionx.backtest.h3 import PatternSignal, atr_series
 from orionx.backtest.h3_freeze import Row
 from orionx.core.models import Bar
 
@@ -174,3 +174,108 @@ def family_max_test(
         if top >= best.mean_net:
             beaten += 1
     return FamilyResult(best, (beaten + 1) / (permutations + 1), permutations, len(kept))
+
+
+# --- découpage des périodes, blocs, cohérence -----------------------------------------------------------------------------
+RESERVE_DAYS = 183  # « les 6 derniers mois » (protocole §2)
+BLOCKS = 4
+
+
+def split_dev_reserve(rows: Sequence[Row]) -> tuple[list[Row], list[Row]]:
+    """Sépare la réserve (les 183 derniers jours de la série, jamais regardés) du développement. Heures serveur, jamais l'horloge locale."""
+    if not rows:
+        return [], []
+    cut = rows[-1][0] - RESERVE_DAYS * 86400
+    return [r for r in rows if r[0] < cut], [r for r in rows if r[0] >= cut]
+
+
+def block_of(time: int, start: int, end: int, blocks: int = BLOCKS) -> int:
+    """Numéro (0 à blocks-1) du bloc de durée égale qui contient `time`, entre `start` et `end` inclus."""
+    span = max(end - start, 1)
+    return min(blocks - 1, int((time - start) * blocks / span))
+
+
+@dataclass(frozen=True)
+class Consistency:
+    positive_blocks: int
+    positive_symbols: int
+    block_means: tuple[float | None, ...]
+    symbol_means: dict[str, float]
+
+
+def consistency(
+    refs: Sequence[SignalRef],
+    horizon: int,
+    sds: dict[str, SymbolData],
+    tables: dict[str, FamilyTable],
+    start: int,
+    end: int,
+) -> Consistency:
+    """Rendement net moyen de la variante retenue par bloc de temps (symboles agrégés) et par symbole (tous blocs agrégés)."""
+    by_block: dict[int, list[float]] = {b: [] for b in range(BLOCKS)}
+    by_symbol: dict[str, list[float]] = {}
+    for r in refs:
+        v = tables[r.symbol].net[(r.direction, horizon)][r.index]
+        if v is None:
+            continue
+        by_block[block_of(sds[r.symbol].times[r.index], start, end)].append(v)
+        by_symbol.setdefault(r.symbol, []).append(v)
+    block_means = tuple(sum(x) / len(x) if x else None for x in (by_block[b] for b in range(BLOCKS)))
+    symbol_means = {s: sum(x) / len(x) for s, x in by_symbol.items() if x}
+    return Consistency(
+        sum(1 for m in block_means if m is not None and m > 0), sum(1 for m in symbol_means.values() if m > 0), block_means, symbol_means
+    )
+
+
+# --- variantes des familles directionnelles (a, c, d) -----------------------------------------------------------------------
+def variants_from_detector(
+    sds: dict[str, SymbolData], detect: Callable[[list[Bar]], list[PatternSignal]], horizons: Sequence[int]
+) -> dict[Variant, list[SignalRef]]:
+    """Applique un détecteur (bougies -> signaux) à chaque symbole et range les signaux par (règle, horizon).
+    Les signaux sans sens (direction 0) sont ignorés."""
+    out: dict[Variant, list[SignalRef]] = {}
+    for sd in sds.values():
+        for sig in detect(sd.bars):
+            if sig.direction == 0:
+                continue
+            for h in horizons:
+                out.setdefault((sig.name, h), []).append(make_ref(sd, sig.index, sig.direction))
+    return out
+
+
+@dataclass(frozen=True)
+class DirectionalVerdict:
+    family: str
+    result: FamilyResult
+    consistency: Consistency | None
+    checks: dict[str, bool]
+    passed: bool
+
+
+def judge_directional(
+    family: str,
+    variants: dict[Variant, list[SignalRef]],
+    sds: dict[str, SymbolData],
+    tables: dict[str, FamilyTable],
+    *,
+    decision_symbols: Sequence[str],
+    permutations: int = 1000,
+    seed: int = 0,
+) -> DirectionalVerdict:
+    """Critères §5 des familles directionnelles : ≥ 100 signaux, rendement net moyen > 0, p ≤ 0,025 (test du maximum),
+    positif dans ≥ 3 blocs sur 4 et sur ≥ 3 symboles de décision sur 4. TOUS requis, sans tolérance."""
+    decision = {s: sds[s] for s in decision_symbols}
+    kept = {v: [r for r in refs if r.symbol in decision] for v, refs in variants.items()}
+    result = family_max_test(kept, {s: tables[s] for s in decision}, permutations=permutations, seed=seed)
+    if result.best is None:
+        return DirectionalVerdict(family, result, None, {"au_moins_100_signaux": False}, False)
+    start, end = min(sd.times[0] for sd in decision.values()), max(sd.times[-1] for sd in decision.values())
+    cons = consistency(kept[result.best.variant], result.best.variant[1], decision, tables, start, end)
+    checks = {
+        "au_moins_100_signaux": result.best.signals >= 100,
+        "rendement_net_positif": result.best.mean_net > 0,
+        "meilleur_que_97_5_pct_du_hasard": result.p_value <= 0.025,
+        "positif_dans_3_blocs_sur_4": cons.positive_blocks >= 3,
+        "positif_sur_3_symboles_sur_4": cons.positive_symbols >= 3,
+    }
+    return DirectionalVerdict(family, result, cons, checks, all(checks.values()))
