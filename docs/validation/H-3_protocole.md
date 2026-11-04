@@ -25,7 +25,19 @@ a-t-elle un avantage mesurable, **net des coûts réels**, meilleur que le hasar
 - **Symboles de décision** : **GBPUSD, USDJPY, AUDUSD, USDCAD**, jamais regardés dans H-1 ni H-2. **EURUSD** est calculé et rapporté pour information, mais **ne compte pas dans la décision** : cette série a déjà
   servi à 7 hypothèses (un résultat flatteur dessus serait suspect).
 - **Unités de temps** : **H1** (familles a à e) et **D1** (famille f). Pas d'autre unité de temps.
-- **Étendue** : tout l'historique disponible chez le courtier, jusqu'à la dernière bougie complète avant la date de gel **[À FIGER : dates de début et de fin par symbole, nombre de bougies]**.
+- **Étendue** : tout l'historique que le terminal fournit, jusqu'à la dernière bougie complète avant la date de gel (la bougie en formation est écartée). Le terminal plafonne à environ 100 000 bougies H1 par symbole, soit environ 16 ans.
+
+**Gel effectué le 4 nov. 2026 à 21:13 UTC** (heures ci-dessous = heure serveur du courtier ; manifeste `H-3_snapshot_manifest.json`, empreintes sha256 par fichier, vérifiées après écriture) :
+
+| Symbole | H1 : bougies, du -> au | D1 : bougies, du -> au |
+|---|---|---|
+| GBPUSD | 100 006 : 2010-09-27 -> 2026-11-04 | 4 612 : 2010-01-04 -> 2026-11-03 |
+| USDJPY | 100 005 : 2010-09-28 -> 2026-11-04 | 4 613 : 2010-01-04 -> 2026-11-03 |
+| AUDUSD | 100 310 : 2010-09-09 -> 2026-11-04 | 4 610 : 2010-01-04 -> 2026-11-03 |
+| USDCAD | 100 098 : 2010-09-23 -> 2026-11-04 | 4 616 : 2010-01-04 -> 2026-11-03 |
+| EURUSD (information seulement) | 100 152 : 2010-09-20 -> 2026-11-04 | 4 616 : 2010-01-04 -> 2026-11-03 |
+
+  Aucune année intérieure n'est suspecte (contrôle du gel). **Réserve** : les 183 derniers jours de chaque série (à partir du 5 mai 2026 environ), non regardés. **Développement** : tout ce qui précède, en 4 blocs de durée égale (environ 3,9 ans chacun).
 - **Gel** : les bougies (avec leur champ de spread historique) sont enregistrées dans des fichiers dont l'empreinte `sha256` est inscrite dans `H-3_snapshot_manifest.json`. L'outil **refuse de s'exécuter** si une empreinte diffère.
 - **Développement et réserve** : la **réserve** est la **dernière période de 6 mois** (par symbole), **jamais évaluée**. Le **développement** est tout ce qui précède, coupé en **4 blocs consécutifs de durée égale**
   (par symbole). La réserve ne peut être ouverte qu'**une seule fois** (§6) ; après cela, elle est consommée.
@@ -99,7 +111,7 @@ Aucun paramètre n'est modifié après le gel : seuils de bougies, définitions 
 
 1. [x] **Écrire ce protocole** et le commiter (ce document, avant toute donnée et tout code d'essai).
 2. [x] **Lire la commission réelle** : fait le 4 nov. 2026 (3,50 USD par lot et par côté, §3), par un trade démo de 0,01 lot (`demo-trade`) puis de 1 lot.
-3. [ ] **Geler les données** : lecture de l'historique des 5 symboles en H1 et D1, enregistrement en fichiers, calcul des empreintes, remplissage des champs **[À FIGER]** ci-dessus, commit distinct.
+3. [x] **Geler les données** : fait le 4 nov. 2026 (commande `h3-freeze`, 10 séries, aucune année suspecte), manifeste commité dans un commit distinct, **avant** toute mesure.
 4. [ ] **Coder** les détecteurs et le banc d'essai (`h3.py`) : fonctions pures, testées sur des données synthétiques (par exemple : un avalement construit à la main est détecté, un hasard pur ne passe pas).
    **Sans toucher** aux stratégies existantes ni aux garde-fous du risque.
 5. [ ] **Vérifier** que le banc refuse des données dont l'empreinte diffère, puis **exécuter le développement une seule fois**, publier la sortie complète quel qu'elle soit.
