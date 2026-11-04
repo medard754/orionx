@@ -75,6 +75,8 @@ Dernière mise à jour : 27 oct. 2026 · Phase : validation M3 à M7 sur MT5 dé
 
 - [~] **H-3, préparation** (3 nov. 2026) : `docs/validation/H-3_catalogue_regles_cours.md` range les règles d'un cours de trading (chandeliers, figures, Fibonacci, divergences, étranglement de Bollinger, plan journalier) en candidats testables, avec définitions mécaniques à figer, niveaux témoins, une famille = une hypothèse, coûts réels IC Markets. **Rien n'est testé ni intégré à l'agent** ; martingale exclue. Prochaine étape : écrire `H-3_protocole.md` une fois la mémoire de marché enrichie.
 
+- [~] **H-3, détecteurs de chandeliers** (4 nov. 2026) : `agent/orionx/backtest/h3.py` détecte la famille H-3a (12 figures) avec les seuils du catalogue ; fonctions pures, 11 tests sur des bougies construites à la main (dont : rien ne regarde le futur). Aucun résultat de marché n'est calculé. Restent : familles b à f, banc d'essai, gel des données du courtier.
+
 ## À faire (ordre recommandé)
 
 | ID | Tâche | Preuve que c'est fini |
