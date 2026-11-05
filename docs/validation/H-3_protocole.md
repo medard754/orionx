@@ -104,17 +104,35 @@ Descriptive seulement. Elle ne règle **jamais** un paramètre (principe n°10) 
 
 ## 8. Ce qui est figé
 
-Aucun paramètre n'est modifié après le gel : seuils de bougies, définitions de pivots (zigzag à 3 ATR), niveaux, horizons, coûts, graines. Empreintes (`git hash-object`) **[À FIGER]** pour :
-`backtest/h3.py`, `strategies/indicators.py`, `H-3_catalogue_regles_cours.md`, `H-3_snapshot_manifest.json`. Configuration par défaut codée dans `h3.py`, jamais `config.yaml`.
+Aucun paramètre n'est modifié après le gel : seuils de bougies, définitions de pivots (zigzag à 3 ATR), niveaux, horizons, coûts, graines. Empreintes (`git hash-object`) **figées le 5 nov. 2026, avant toute exécution du développement** :
+
+| Fichier | Empreinte |
+|---|---|
+| `agent/orionx/backtest/h3.py` (détecteurs, SAR) | `dae5a355d0d8a55f933f754b7e9a7be23a8cbc52` |
+| `agent/orionx/backtest/h3_bench.py` (banc, jugements) | `401aed2d46146bbc98a3da0d416ce67888fa86f0` |
+| `agent/orionx/backtest/h3_run.py` (exécution unique) | `0e33416d810e28650351d42d1ad357f324c5f74a` |
+| `agent/orionx/backtest/h3_freeze.py` (gel) | `339c9832d54183417029e815efbcc7d5cdd786dd` |
+| `agent/orionx/strategies/indicators.py` | `0f6d9c09eed41d1d31ceda065543f98b4e38dbec` |
+| `docs/validation/H-3_catalogue_regles_cours.md` | `111a0988280a3fdb5a4a5feac7e0719526bb2481` |
+| `docs/validation/H-3_snapshot_manifest.json` | `5b85043f674f02f78a2b1d869de5b4d2e41d22f8` |
+
+Configuration par défaut codée dans `h3.py`, jamais `config.yaml`. Toute modification de l'un de ces fichiers après l'exécution invalide le verdict.
+
+**Précisions de mise en œuvre** (écrites avant toute mesure ; elles complètent §4 et §5 sans en changer les seuils) :
+- Famille e : un étranglement qui dure compte **une seule fois** (on ne garde que sa première bougie ; aucun autre signal dans les 12 bougies précédentes). Rapport de volatilité >= 1,20 sur au moins 100 épisodes par symbole.
+- Famille b : une entrée = un contact avec un niveau (Fibonacci ou témoin) après une jambe >= 3 ATR ; ordre limite rempli au niveau ; les niveaux déjà franchis entre le pivot et sa confirmation sont exclus (pas d'anticipation).
+- Famille f : SAR de Wilder (pas 0,02, maximum 0,20) ; entrée à l'ouverture suivant une inversion du SAR si la pente de la MMS 100 (sur 10 jours) et le RSI(14) (> 50 ou < 50) vont dans le même sens ; stop = SAR en vigueur ; sortie au SAR à l'inversion suivante (au plus défavorable entre le SAR et l'ouverture en cas d'écart) ; une position à la fois par symbole ;
+  distance de risque plancher 0,5 ATR pour le dimensionnement ; tirages aléatoires : mêmes symboles, sens, durées et distances de risque, dates tirées au hasard.
+- Une seule exécution : un marqueur `h3_dev_run.json` interdit de relancer. Un refus (empreinte différente) n'épuise pas l'exécution.
 
 ## 9. Ordre des opérations
 
 1. [x] **Écrire ce protocole** et le commiter (ce document, avant toute donnée et tout code d'essai).
 2. [x] **Lire la commission réelle** : fait le 4 nov. 2026 (3,50 USD par lot et par côté, §3), par un trade démo de 0,01 lot (`demo-trade`) puis de 1 lot.
 3. [x] **Geler les données** : fait le 4 nov. 2026 (commande `h3-freeze`, 10 séries, aucune année suspecte), manifeste commité dans un commit distinct, **avant** toute mesure.
-4. [ ] **Coder** les détecteurs et le banc d'essai (`h3.py`) : fonctions pures, testées sur des données synthétiques (par exemple : un avalement construit à la main est détecté, un hasard pur ne passe pas).
+4. [x] **Coder** les détecteurs et le banc d'essai (`h3.py`) : fonctions pures, testées sur des données synthétiques (par exemple : un avalement construit à la main est détecté, un hasard pur ne passe pas).
    **Sans toucher** aux stratégies existantes ni aux garde-fous du risque.
-5. [ ] **Vérifier** que le banc refuse des données dont l'empreinte diffère, puis **exécuter le développement une seule fois**, publier la sortie complète quel qu'elle soit.
+5. [ ] (code figé le 5 nov. 2026) **Vérifier** que le banc refuse des données dont l'empreinte diffère, puis **exécuter le développement une seule fois**, publier la sortie complète quel qu'elle soit.
 6. [ ] Appliquer §6 (réserve) seulement si une famille a passé §5.
 
 ## 10. Décision
