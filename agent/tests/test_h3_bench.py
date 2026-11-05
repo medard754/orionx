@@ -6,6 +6,7 @@ import unittest
 from orionx.backtest.h3 import detect_candlesticks
 from orionx.backtest.h3_bench import (
     FamilyTable,
+    FibTrade,
     SymbolData,
     block_of,
     build_symbol_data,
@@ -13,11 +14,16 @@ from orionx.backtest.h3_bench import (
     commission_in_price,
     consistency,
     family_max_test,
+    fib_trades,
     forward_net,
     judge_directional,
+    judge_fibonacci,
+    judge_squeeze,
+    judge_squeeze_symbol,
     make_ref,
     point_size,
     split_dev_reserve,
+    squeeze_episodes,
     variants_from_detector,
 )
 from orionx.backtest.h3_freeze import Row
@@ -191,6 +197,89 @@ class JudgeTests(unittest.TestCase):
         c = consistency(refs, 12, sds, tables, start, end)
         self.assertEqual(c.positive_symbols, 1)
         self.assertGreaterEqual(c.positive_blocks, 3)
+
+
+class FibonacciJudgeTests(unittest.TestCase):
+    @staticmethod
+    def synthetic(fib_edge: float, symbols: tuple[str, ...], seed: int, n: int = 150, spread_in_time: bool = True) -> list[FibTrade]:
+        rng, out = random.Random(seed), []
+        for sym in symbols:
+            for k in range(n):
+                t = T0 + (k * 400 if spread_in_time else 0) * HOUR
+                for ratio in (0.382, 0.5, 0.618):
+                    out.append(FibTrade(sym, t, ratio, True, fib_edge + rng.gauss(0, 1)))
+                for ratio in (0.30, 0.45, 0.55, 0.70):
+                    out.append(FibTrade(sym, t, ratio, False, rng.gauss(0, 1)))
+        return out
+
+    SYMBOLS = ("GBPUSD", "USDJPY", "AUDUSD", "USDCAD")
+
+    def test_fibonacci_levels_no_better_than_witness_levels_rarely_pass(self) -> None:
+        passed = 0
+        for seed in range(12):
+            trades = self.synthetic(0.0, self.SYMBOLS, seed)
+            passed += judge_fibonacci(trades, T0, T0 + 150 * 400 * HOUR, permutations=200, seed=1).passed
+        self.assertLessEqual(passed, 2, "sans écart réel, les faux positifs restent rares")
+
+    def test_a_real_gap_between_fibonacci_and_witness_levels_passes(self) -> None:
+        trades = self.synthetic(0.5, self.SYMBOLS, 2)
+        v = judge_fibonacci(trades, T0, T0 + 150 * 400 * HOUR, permutations=300, seed=1)
+        self.assertTrue(v.passed, v.checks)
+        self.assertGreater(v.fib_mean, v.witness_mean)
+
+    def test_a_good_result_concentrated_in_one_period_fails_the_block_criterion(self) -> None:
+        trades = self.synthetic(0.5, self.SYMBOLS, 3, spread_in_time=False)
+        span_end = T0 + 150 * 400 * HOUR
+        v = judge_fibonacci(trades, T0, span_end, permutations=100, seed=1)
+        self.assertFalse(v.checks["positif_dans_3_blocs_sur_4"])
+        self.assertFalse(v.passed)
+
+    def test_witness_levels_never_overlap_fibonacci_levels_in_real_entries(self) -> None:
+        sd = build_symbol_data("EURUSD", walk(8000, 11))
+        trades = fib_trades(sd)
+        self.assertTrue(trades)
+        self.assertTrue(all(t.is_fib == (t.ratio in (0.382, 0.5, 0.618)) for t in trades))
+        self.assertTrue(all(abs(t.value) < 50 for t in trades))
+
+
+def cycles(n_cycles: int, calm: int, seed: int) -> list[Row]:
+    """Volatilité normale, courte accalmie, puis tempête : ici l'étranglement précède réellement un regain de volatilité."""
+    rng, rows, price, k = random.Random(seed), [], 1.10, 0
+    for _ in range(n_cycles):
+        for scale, length in ((0.001, 150), (0.00003, calm), (0.006, 40)):
+            for _j in range(length):
+                o, c = price, price + rng.gauss(0, scale)
+                hi = max(o, c) + abs(rng.gauss(0, scale / 2))
+                lo = min(o, c) - abs(rng.gauss(0, scale / 2))
+                rows.append((T0 + k * HOUR, o, hi, lo, c, 100, 5))
+                price, k = c, k + 1
+    return rows
+
+
+class SqueezeJudgeTests(unittest.TestCase):
+    def test_constant_volatility_has_no_squeeze_edge(self) -> None:
+        sd = build_symbol_data("EURUSD", walk(30000, 5))
+        v = judge_squeeze_symbol(sd, permutations=200, seed=1)
+        self.assertFalse(v.passed)
+
+    def test_calm_followed_by_storm_is_detected(self) -> None:
+        sd = build_symbol_data("EURUSD", cycles(130, 40, 7))
+        v = judge_squeeze_symbol(sd, permutations=200, seed=1, horizon=30)
+        self.assertGreaterEqual(v.episodes, 100)
+        self.assertGreater(v.mean_ratio, 1.2)
+        self.assertLessEqual(v.p_value, 0.025)
+        self.assertTrue(v.passed)
+
+    def test_an_episode_counts_once_however_long_the_squeeze_lasts(self) -> None:
+        sd = build_symbol_data("EURUSD", cycles(40, 40, 8))
+        episodes = squeeze_episodes(sd.bars)
+        self.assertTrue(all(b - a > 12 for a, b in zip(episodes, episodes[1:], strict=False)))
+
+    def test_the_family_needs_three_symbols_out_of_four(self) -> None:
+        good = judge_squeeze_symbol(build_symbol_data("EURUSD", cycles(130, 40, 9)), permutations=100, seed=1, horizon=30)
+        bad = judge_squeeze_symbol(build_symbol_data("EURUSD", walk(30000, 6)), permutations=100, seed=1)
+        self.assertEqual(judge_squeeze([good, good, good, bad]), (3, True))
+        self.assertEqual(judge_squeeze([good, good, bad, bad]), (2, False))
 
 
 if __name__ == "__main__":

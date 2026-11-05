@@ -18,7 +18,17 @@ from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime
 
-from orionx.backtest.h3 import PatternSignal, atr_series
+from orionx.backtest.h3 import (
+    FIB_RACE_ATR,
+    FIB_RATIOS,
+    FIB_WITNESS_RATIOS,
+    PatternSignal,
+    atr_series,
+    detect_squeezes,
+    fib_entries,
+    race_outcome,
+    volatility_ratio,
+)
 from orionx.backtest.h3_freeze import Row
 from orionx.core.models import Bar
 
@@ -279,3 +289,134 @@ def judge_directional(
         "positif_sur_3_symboles_sur_4": cons.positive_symbols >= 3,
     }
     return DirectionalVerdict(family, result, cons, checks, all(checks.values()))
+
+
+# --- famille b : Fibonacci contre niveaux témoins ----------------------------------------------------------------------------
+@dataclass(frozen=True)
+class FibTrade:
+    symbol: str
+    time: int  # heure serveur de la bougie de contact
+    ratio: float
+    is_fib: bool
+    value: float  # rendement net en ATR : +1 ou -1 (course ±1 ATR), 0 si ni l'un ni l'autre, moins les coûts
+
+
+def fib_trades(sd: SymbolData) -> list[FibTrade]:
+    """Toutes les entrées Fibonacci ET témoins d'un symbole, avec leur rendement net (ordre limite rempli au niveau, coûts à l'entrée)."""
+    out: list[FibTrade] = []
+    for e in fib_entries(sd.bars, FIB_RATIOS + FIB_WITNESS_RATIOS):
+        cost = (sd.spreads[e.index] * point_size(sd.symbol) + commission_in_price(sd.symbol, e.price)) / e.atr
+        out.append(FibTrade(sd.symbol, sd.times[e.index], e.ratio, e.ratio in FIB_RATIOS, race_outcome(sd.bars, e) * FIB_RACE_ATR - cost))
+    return out
+
+
+@dataclass(frozen=True)
+class FibVerdict:
+    fib_trades: int
+    witness_trades: int
+    fib_mean: float
+    witness_mean: float
+    p_value: float
+    consistency: Consistency
+    checks: dict[str, bool]
+    passed: bool
+
+
+def _group_consistency(trades: Sequence[FibTrade], start: int, end: int) -> Consistency:
+    by_block: dict[int, list[float]] = {b: [] for b in range(BLOCKS)}
+    by_symbol: dict[str, list[float]] = {}
+    for t in trades:
+        by_block[block_of(t.time, start, end)].append(t.value)
+        by_symbol.setdefault(t.symbol, []).append(t.value)
+    block_means = tuple(sum(x) / len(x) if x else None for x in (by_block[b] for b in range(BLOCKS)))
+    symbol_means = {s: sum(x) / len(x) for s, x in by_symbol.items() if x}
+    return Consistency(
+        sum(1 for m in block_means if m is not None and m > 0), sum(1 for m in symbol_means.values() if m > 0), block_means, symbol_means
+    )
+
+
+def judge_fibonacci(trades: Sequence[FibTrade], start: int, end: int, *, permutations: int = 1000, seed: int = 0) -> FibVerdict:
+    """Critères §5 de la famille b : ≥ 100 entrées Fibonacci, rendement net moyen > 0 (taux de réussite net > 50 %), écart avec les niveaux
+    témoins significatif (étiquettes permutées, p ≤ 0,025), positif dans ≥ 3 blocs sur 4 et sur ≥ 3 symboles sur 4. TOUS requis."""
+    fib = [t for t in trades if t.is_fib]
+    wit = [t for t in trades if not t.is_fib]
+    fib_mean = sum(t.value for t in fib) / len(fib) if fib else 0.0
+    wit_mean = sum(t.value for t in wit) / len(wit) if wit else 0.0
+    observed = fib_mean - wit_mean
+    values = [t.value for t in trades]
+    n_fib = len(fib)
+    beaten = 0
+    if fib and wit:
+        rng = random.Random(seed)
+        for _ in range(permutations):
+            rng.shuffle(values)
+            head = sum(values[:n_fib]) / n_fib
+            tail = (sum(values) - sum(values[:n_fib])) / (len(values) - n_fib)
+            if head - tail >= observed:
+                beaten += 1
+    p_value = (beaten + 1) / (permutations + 1)
+    cons = _group_consistency(fib, start, end)
+    checks = {
+        "au_moins_100_entrees_fibonacci": len(fib) >= 100,
+        "rendement_net_positif": fib_mean > 0,
+        "meilleur_que_les_niveaux_temoins_p_0_025": bool(fib and wit) and p_value <= 0.025,
+        "positif_dans_3_blocs_sur_4": cons.positive_blocks >= 3,
+        "positif_sur_3_symboles_sur_4": cons.positive_symbols >= 3,
+    }
+    return FibVerdict(len(fib), len(wit), fib_mean, wit_mean, p_value, cons, checks, all(checks.values()))
+
+
+# --- famille e : étranglement de Bollinger (volatilité, non directionnel) ---------------------------------------------------
+SQUEEZE_RATIO_MIN = 1.20
+SQUEEZE_EPISODE_GAP = 12  # un étranglement qui dure compte UNE fois : on ne garde que sa première bougie
+
+
+def squeeze_episodes(bars: list[Bar]) -> list[int]:
+    """Indices de la première bougie de chaque épisode d'étranglement (aucun autre signal dans les 12 bougies précédentes)."""
+    out: list[int] = []
+    for s in detect_squeezes(bars):
+        if not out or s.index - out[-1] > SQUEEZE_EPISODE_GAP:
+            out.append(s.index)
+    return out
+
+
+@dataclass(frozen=True)
+class SqueezeSymbolVerdict:
+    symbol: str
+    episodes: int
+    mean_ratio: float
+    p_value: float
+    passed: bool
+
+
+def judge_squeeze_symbol(sd: SymbolData, *, permutations: int = 1000, seed: int = 0, horizon: int = 12) -> SqueezeSymbolVerdict:
+    """La volatilité des `horizon` bougies après un étranglement dépasse-t-elle de 20 % la volatilité habituelle, mieux que des dates
+    de même heure tirées au hasard ? Épisodes uniques ; ≥ 100 épisodes requis pour compter."""
+    ratios: list[float | None] = [volatility_ratio(sd.bars, i, horizon) for i in range(len(sd.bars))]
+    episodes = [i for i in squeeze_episodes(sd.bars) if ratios[i] is not None]
+    if not episodes:
+        return SqueezeSymbolVerdict(sd.symbol, 0, 0.0, 1.0, False)
+    observed = sum(float(ratios[i] or 0.0) for i in episodes) / len(episodes)
+    by_hour: dict[int, list[int]] = {}
+    for i, r in enumerate(ratios):
+        if r is not None:
+            by_hour.setdefault(sd.hour[i], []).append(i)
+    rng = random.Random(seed)
+    beaten = 0
+    for _ in range(permutations):
+        total = 0.0
+        for i in episodes:
+            pool = by_hour[sd.hour[i]]
+            total += float(ratios[pool[rng.randrange(len(pool))]] or 0.0)
+        if total / len(episodes) >= observed:
+            beaten += 1
+    p_value = (beaten + 1) / (permutations + 1)
+    return SqueezeSymbolVerdict(
+        sd.symbol, len(episodes), observed, p_value, len(episodes) >= 100 and observed >= SQUEEZE_RATIO_MIN and p_value <= 0.025
+    )
+
+
+def judge_squeeze(per_symbol: Sequence[SqueezeSymbolVerdict]) -> tuple[int, bool]:
+    """(symboles qui passent, famille acceptée) : au moins 3 symboles de décision sur 4."""
+    ok = sum(1 for v in per_symbol if v.passed)
+    return ok, ok >= 3
