@@ -14,6 +14,7 @@
   python -m orionx.main backtest          # backtest de la stratégie sur l'historique MT5 (lecture seule)
   python -m orionx.main backtest --h1     # protocole H-1/V-3 : développement seul (docs/validation/H-1_protocole.md)
   python -m orionx.main backtest --h2     # protocole H-2 : développement seul (docs/validation/H-2_protocole.md)
+  python -m orionx.main backtest --h3     # protocole H-3 : développement, UNE seule exécution (docs/validation/H-3_protocole.md)
   python -m orionx.main risk-set --profile moderate   # changer de profil de risque (hausse = délai de 24 h)
   python -m orionx.main risk-status       # configuration de risque active / en attente
   python -m orionx.main risk-check --symbol EURUSD --side buy   # que déciderait le risque ? (aucun ordre)
@@ -442,6 +443,25 @@ def h3_freeze_cmd(symbols: str | None, commission: float | None) -> int:
     return 0
 
 
+def h3_cmd() -> int:
+    """H-3 : exécute le développement UNE fois, après vérification des empreintes du gel. Aucune connexion MT5 : lit les fichiers gelés."""
+    import json
+
+    from orionx.backtest import h3_run
+
+    docs = Path(__file__).resolve().parents[2] / "docs" / "validation"
+    manifest = json.loads((docs / "H-3_snapshot_manifest.json").read_text(encoding="utf-8"))
+    try:
+        lines, _any = h3_run.run_development(DATA_DIR / "h3", manifest)
+    except h3_run.H3Refused as exc:
+        print(f"REFUS : {exc}")
+        return 3
+    target = docs / "H-3_sortie_developpement.txt"
+    target.write_text(chr(10).join(lines) + chr(10), encoding="utf-8")
+    print(f"Sortie complète enregistrée : {target} (à commiter telle quelle).")
+    return 0
+
+
 async def signals_report_cmd(cost_pips: float, horizon: int) -> int:
     """Rejoue les signaux du journal sur les bougies suivantes (lecture seule : aucun ordre, aucune écriture)."""
     from orionx.audit.log import AuditLog
@@ -714,6 +734,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--csv", type=Path, default=None, help="backtest : exporte les trades en CSV")
     parser.add_argument("--h1", action="store_true", help="backtest : protocole H-1/V-3 (réserve de 6 mois jamais évaluée ici)")
     parser.add_argument("--h2", action="store_true", help="backtest : protocole H-2 (docs/validation/H-2_protocole.md)")
+    parser.add_argument("--h3", action="store_true", help="backtest : protocole H-3 (une seule exécution du développement)")
     parser.add_argument("--symbols", default=None, help="h3-freeze : symboles séparés par des virgules")
     parser.add_argument("--commission", type=float, default=None, help="h3-freeze : commission mesurée, en USD par lot et par côté")
     parser.add_argument("--cost-pips", type=float, default=1.0, help="signals-report : coût supplémentaire par trade, en pips")
@@ -754,6 +775,8 @@ def main(argv: list[str] | None = None) -> int:
     if args.command == "signals-report":
         return asyncio.run(signals_report_cmd(args.cost_pips, args.horizon))
     if args.command == "backtest":
+        if args.h3:
+            return h3_cmd()
         if args.h1:
             return asyncio.run(h1_cmd(args.symbol, args.open_holdout, cfg))
         if args.h2:
