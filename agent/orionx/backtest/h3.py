@@ -419,3 +419,42 @@ def race_outcome(bars: list[Bar], entry: FibEntry, max_bars: int = FIB_RACE_BARS
         if hit_up:
             return 1
     return 0
+
+
+# --- famille f : parabolique SAR (Wilder, pas 0,02, maximum 0,20) ---------------------------------------------------------
+SAR_STEP = 0.02
+SAR_MAX = 0.20
+
+
+@dataclass(frozen=True)
+class SarState:
+    trend: int  # +1 haussier, -1 baissier (tendance en vigueur à la fin de la bougie)
+    stop: float  # niveau du SAR en vigueur PENDANT la bougie (avant une éventuelle inversion)
+    flipped: bool  # la tendance s'est inversée sur cette bougie
+
+
+def sar_series(bars: list[Bar]) -> list[SarState | None]:
+    """Parabolique SAR classique. Causal : l'état de la bougie i ne dépend que des bougies ≤ i. None pour les deux premières bougies."""
+    out: list[SarState | None] = [None] * len(bars)
+    if len(bars) < 3:
+        return out
+    up = bars[1].close >= bars[0].close
+    sar = bars[0].low if up else bars[0].high
+    ep = bars[1].high if up else bars[1].low
+    af = SAR_STEP
+    for i in range(2, len(bars)):
+        b = bars[i]
+        level = sar + af * (ep - sar)
+        level = min(level, bars[i - 1].low, bars[i - 2].low) if up else max(level, bars[i - 1].high, bars[i - 2].high)
+        if up and b.low < level:
+            up, sar, ep, af, flipped = False, ep, b.low, SAR_STEP, True
+        elif not up and b.high > level:
+            up, sar, ep, af, flipped = True, ep, b.high, SAR_STEP, True
+        else:
+            flipped = False
+            sar = level
+            if (up and b.high > ep) or (not up and b.low < ep):
+                ep = b.high if up else b.low
+                af = min(af + SAR_STEP, SAR_MAX)
+        out[i] = SarState(1 if up else -1, level, flipped)
+    return out

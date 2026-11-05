@@ -27,6 +27,9 @@ from orionx.backtest.h3 import (
     detect_squeezes,
     fib_entries,
     race_outcome,
+    rsi_series,
+    sar_series,
+    sma,
     volatility_ratio,
 )
 from orionx.backtest.h3_freeze import Row
@@ -420,3 +423,139 @@ def judge_squeeze(per_symbol: Sequence[SqueezeSymbolVerdict]) -> tuple[int, bool
     """(symboles qui passent, famille acceptée) : au moins 3 symboles de décision sur 4."""
     ok = sum(1 for v in per_symbol if v.passed)
     return ok, ok >= 3
+
+
+# --- famille f : « plan de trading » du cours, en D1 --------------------------------------------------------------------------
+PLAN_SMA = 100
+PLAN_SLOPE_BARS = 10
+PLAN_RISK_PCT = 0.5
+PLAN_MIN_RISK_ATR = 0.5  # distance de risque plancher pour dimensionner (évite des tailles absurdes quand le SAR est collé au prix)
+PLAN_DRAWS = 200
+PLAN_PF_MIN = 1.2
+PLAN_DD_MAX_PCT = 10.0
+
+
+@dataclass(frozen=True)
+class PlanTrade:
+    symbol: str
+    direction: int
+    entry: int  # indice de la bougie d'entrée
+    exit: int  # indice de la bougie de sortie
+    exit_time: int
+    risk_atr: float  # distance de risque en ATR
+    r: float  # résultat net en multiples du risque
+
+
+def _trade_cost_price(sd: SymbolData, entry: int, exit_: int, direction: int) -> float:
+    """Spread payé (à l'entrée pour un achat, à la sortie pour une vente) + commission, en unités de prix."""
+    pt = point_size(sd.symbol)
+    spread = sd.spreads[entry] * pt if direction == 1 else sd.spreads[exit_] * pt
+    return spread + commission_in_price(sd.symbol, sd.bars[entry].open)
+
+
+def plan_trades(sd: SymbolData) -> list[PlanTrade]:
+    """Entrée à l'ouverture suivant une inversion du SAR, si la pente de la MMS 100 et le RSI(14) vont dans le même sens ; stop = SAR ;
+    sortie au SAR à l'inversion suivante (au plus défavorable entre le SAR et l'ouverture en cas d'écart). Une position à la fois."""
+    bars = sd.bars
+    sar = sar_series(bars)
+    closes = [b.close for b in bars]
+    rsi = rsi_series(closes)
+    out: list[PlanTrade] = []
+    open_dir, entry_i, entry_px, risk = 0, 0, 0.0, 0.0
+    for i in range(3, len(bars)):
+        st = sar[i]
+        if st is None:
+            continue
+        if open_dir and st.flipped:
+            px = min(bars[i].open, st.stop) if open_dir == 1 else max(bars[i].open, st.stop)
+            gross = (px - entry_px) * open_dir
+            r = (gross - _trade_cost_price(sd, entry_i, i, open_dir)) / risk
+            atr_e = sd.atr[entry_i] or 0.0
+            out.append(PlanTrade(sd.symbol, open_dir, entry_i, i, sd.times[i], risk / atr_e if atr_e else 0.0, r))
+            open_dir = 0
+        if open_dir or not st.flipped or i + 1 >= len(bars):
+            continue
+        nxt = sar[i + 1]
+        direction = st.trend
+        s_now, s_old = sma(closes, PLAN_SMA, i), sma(closes, PLAN_SMA, i - PLAN_SLOPE_BARS)
+        rs, atr = rsi[i], sd.atr[i]
+        if nxt is None or s_now is None or s_old is None or rs is None or atr is None or atr <= 0:
+            continue
+        slope = 1 if s_now > s_old else -1 if s_now < s_old else 0
+        if slope != direction or (rs > 50) != (direction == 1):
+            continue
+        px_in = bars[i + 1].open
+        dist = (px_in - nxt.stop) * direction
+        if dist <= 0:
+            continue
+        open_dir, entry_i, entry_px, risk = direction, i + 1, px_in, max(dist, PLAN_MIN_RISK_ATR * atr)
+    return out
+
+
+def profit_factor(values: Sequence[float]) -> float:
+    wins = sum(v for v in values if v > 0)
+    losses = -sum(v for v in values if v < 0)
+    return float("inf") if losses == 0 and wins > 0 else (wins / losses if losses else 0.0)
+
+
+def max_drawdown_pct(trades: Sequence[PlanTrade], risk_pct: float = PLAN_RISK_PCT) -> float:
+    """Drawdown maximal (%) d'un capital qui risque `risk_pct` % par trade, trades classés par heure de sortie, intérêts composés."""
+    equity = peak = 1.0
+    worst = 0.0
+    for t in sorted(trades, key=lambda x: x.exit_time):
+        equity *= max(0.0, 1.0 + risk_pct / 100.0 * t.r)
+        peak = max(peak, equity)
+        worst = max(worst, (peak - equity) / peak * 100.0)
+    return worst
+
+
+def _random_plan_total(data: dict[str, SymbolData], trades: Sequence[PlanTrade], rng: random.Random) -> float:
+    """Même nombre de trades, mêmes symboles, sens, durées et distances de risque (en ATR) : seules les dates sont tirées au hasard."""
+    total = 0.0
+    for t in trades:
+        sd = data[t.symbol]
+        dur = t.exit - t.entry
+        valid = [i for i in range(len(sd.bars) - dur - 2) if sd.atr[i]]
+        i = valid[rng.randrange(len(valid))]
+        e, x = i + 1, i + 1 + dur
+        atr = sd.atr[i] or 1.0
+        risk = max(t.risk_atr, PLAN_MIN_RISK_ATR) * atr
+        gross = (sd.bars[x].close - sd.bars[e].open) * t.direction
+        total += (gross - _trade_cost_price(sd, e, x, t.direction)) / risk
+    return total
+
+
+@dataclass(frozen=True)
+class PlanVerdict:
+    trades: int
+    net_r: float
+    profit_factor: float
+    block_pf: tuple[float, ...]
+    drawdown_pct: float
+    random_better: int
+    checks: dict[str, bool]
+    passed: bool
+
+
+def judge_plan(data: dict[str, SymbolData], start: int, end: int, *, draws: int = PLAN_DRAWS, seed: int = 0) -> PlanVerdict:
+    """Critères §5 de la famille f : ≥ 100 trades agrégés, PF > 1,2 dans ≥ 3 blocs sur 4, drawdown < 10 % à 0,5 % de risque par trade,
+    résultat net meilleur que ≥ 97,5 % de 200 tirages aléatoires. TOUS requis."""
+    trades = [t for sd in data.values() for t in plan_trades(sd)]
+    by_block: list[list[float]] = [[] for _ in range(BLOCKS)]
+    for t in trades:
+        by_block[block_of(t.exit_time, start, end)].append(t.r)
+    block_pf = tuple(profit_factor(b) for b in by_block)
+    net = sum(t.r for t in trades)
+    dd = max_drawdown_pct(trades)
+    better = 0
+    if trades:
+        for k in range(draws):
+            if _random_plan_total(data, trades, random.Random(seed + k)) >= net:
+                better += 1
+    checks = {
+        "au_moins_100_trades": len(trades) >= 100,
+        "pf_superieur_1_2_dans_3_blocs_sur_4": sum(1 for p in block_pf if p > PLAN_PF_MIN) >= 3,
+        "drawdown_inferieur_10_pct": bool(trades) and dd < PLAN_DD_MAX_PCT,
+        "meilleur_que_97_5_pct_des_tirages": bool(trades) and better <= draws * 0.025,
+    }
+    return PlanVerdict(len(trades), net, profit_factor([t.r for t in trades]), block_pf, dd, better, checks, all(checks.values()))
