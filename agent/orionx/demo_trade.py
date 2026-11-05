@@ -78,7 +78,9 @@ async def run_demo_trade(
     )  # fmt: skip
 
     signer = ApprovalSigner()
-    risk = RiskManager(RiskConfig(risk_per_trade_pct=TEST_RISK_PCT, weekend_guard=weekend_guard), signer, max_data_age_seconds=3.0)
+    # Environ 2,5 $ de risque quel que soit le capital du démo (0,0025 % de 100 000 $) : sinon un compte plus petit tombe sous 0,01 lot.
+    test_pct = max(TEST_RISK_PCT, 2.5 / account.equity * 100) if account.equity > 0 else TEST_RISK_PCT
+    risk = RiskManager(RiskConfig(risk_per_trade_pct=test_pct, weekend_guard=weekend_guard), signer, max_data_age_seconds=3.0)
     risk.start(account)
     positions_now = await gw.get_positions()
     specs = {symbol: spec}

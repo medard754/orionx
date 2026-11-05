@@ -1,4 +1,4 @@
-# H-3 – Protocole pré-enregistré (règles d'un cours de trading, mécanisées ; plusieurs marchés, coûts réels IC Markets)
+# H-3 – Protocole pré-enregistré (règles d'un cours de trading, mécanisées ; plusieurs marchés, coûts réels Pepperstone)
 
 **Écrit le 3 nov. 2026, AVANT toute mesure de H-3.** Commité et poussé avant l'outillage, avant le gel des données et avant la première exécution : toute modification
 ultérieure doit apparaître dans l'historique git et être justifiée ici. Suite de `H-1_protocole.md` et `H-2_protocole.md` (NO-GO, 7 échecs sur 7). Le catalogue de départ est
@@ -19,11 +19,25 @@ a-t-elle un avantage mesurable, **net des coûts réels**, meilleur que le hasar
 
 ## 2. Données
 
-- **Source unique** : historique de bougies du compte démo IC Markets (serveur **[À FIGER : nom exact du serveur]**), lu avec MetaTrader 5. Les anciennes données MetaQuotes (sans coûts) **ne servent à aucun verdict**.
+- **Source unique** : historique de bougies du compte démo **Pepperstone** (serveur `Pepperstone-Demo`, société Pepperstone Group Limited, compte en USD, Hedging), lu avec MetaTrader 5.
+  **Changement de courtier, décidé le 4 nov. 2026 AVANT toute mesure** : le protocole prévoyait d'abord IC Markets, injoignable depuis ce poste (connexion de trading refusée, nom de serveur d'abord mal saisi, puis VPN actif) ;
+  aucune bougie ni aucun résultat n'avait été lu. Le courtier ne change ni les définitions, ni les seuils, ni le budget de ce protocole. Les anciennes données MetaQuotes (sans coûts) **ne servent à aucun verdict**.
 - **Symboles de décision** : **GBPUSD, USDJPY, AUDUSD, USDCAD**, jamais regardés dans H-1 ni H-2. **EURUSD** est calculé et rapporté pour information, mais **ne compte pas dans la décision** : cette série a déjà
   servi à 7 hypothèses (un résultat flatteur dessus serait suspect).
 - **Unités de temps** : **H1** (familles a à e) et **D1** (famille f). Pas d'autre unité de temps.
-- **Étendue** : tout l'historique disponible chez le courtier, jusqu'à la dernière bougie complète avant la date de gel **[À FIGER : dates de début et de fin par symbole, nombre de bougies]**.
+- **Étendue** : tout l'historique que le terminal fournit, jusqu'à la dernière bougie complète avant la date de gel (la bougie en formation est écartée). Le terminal plafonne à environ 100 000 bougies H1 par symbole, soit environ 16 ans.
+
+**Gel effectué le 4 nov. 2026 à 21:13 UTC** (heures ci-dessous = heure serveur du courtier ; manifeste `H-3_snapshot_manifest.json`, empreintes sha256 par fichier, vérifiées après écriture) :
+
+| Symbole | H1 : bougies, du -> au | D1 : bougies, du -> au |
+|---|---|---|
+| GBPUSD | 100 006 : 2010-09-27 -> 2026-11-04 | 4 612 : 2010-01-04 -> 2026-11-03 |
+| USDJPY | 100 005 : 2010-09-28 -> 2026-11-04 | 4 613 : 2010-01-04 -> 2026-11-03 |
+| AUDUSD | 100 310 : 2010-09-09 -> 2026-11-04 | 4 610 : 2010-01-04 -> 2026-11-03 |
+| USDCAD | 100 098 : 2010-09-23 -> 2026-11-04 | 4 616 : 2010-01-04 -> 2026-11-03 |
+| EURUSD (information seulement) | 100 152 : 2010-09-20 -> 2026-11-04 | 4 616 : 2010-01-04 -> 2026-11-03 |
+
+  Aucune année intérieure n'est suspecte (contrôle du gel). **Réserve** : les 183 derniers jours de chaque série (à partir du 5 mai 2026 environ), non regardés. **Développement** : tout ce qui précède, en 4 blocs de durée égale (environ 3,9 ans chacun).
 - **Gel** : les bougies (avec leur champ de spread historique) sont enregistrées dans des fichiers dont l'empreinte `sha256` est inscrite dans `H-3_snapshot_manifest.json`. L'outil **refuse de s'exécuter** si une empreinte diffère.
 - **Développement et réserve** : la **réserve** est la **dernière période de 6 mois** (par symbole), **jamais évaluée**. Le **développement** est tout ce qui précède, coupé en **4 blocs consécutifs de durée égale**
   (par symbole). La réserve ne peut être ouverte qu'**une seule fois** (§6) ; après cela, elle est consommée.
@@ -33,7 +47,8 @@ a-t-elle un avantage mesurable, **net des coûts réels**, meilleur que le hasar
 ## 3. Coûts
 
 - **Spread** : celui **enregistré par le courtier pour chaque bougie** (pas un spread fixe). À l'entrée comme à la sortie, un trade paie le spread de la bougie concernée.
-- **Commission** : **[À FIGER : montant par lot et par aller-retour, lu sur un vrai trade démo IC Markets avant le gel]**. Elle est lue dans l'historique des transactions du compte (champ « commission »),
+- **Commission** : **3,50 USD par lot et par côté, soit 7,00 USD par lot et par aller-retour**, mesurée le 4 nov. 2026 sur un vrai trade démo de 1 lot (EURUSD, tickets de transaction 324694148 et 324694155 : « commission -3,5 » à l'entrée
+  et à la sortie ; une mesure à 0,01 lot donnait 0,04 USD par côté, arrondi au centime du même 3,50). Elle est lue dans l'historique des transactions du compte (champ « commission »),
   pas supposée. Si elle n'a pas été lue avant le gel, le gel n'a pas lieu.
 - **Pas de swap** (positions de quelques heures ; pour la famille f, les nuits sont négligées : limite reconnue).
 - **Rendements mesurés en unités d'ATR(14)** du moment, pour comparer des symboles différents.
@@ -89,17 +104,35 @@ Descriptive seulement. Elle ne règle **jamais** un paramètre (principe n°10) 
 
 ## 8. Ce qui est figé
 
-Aucun paramètre n'est modifié après le gel : seuils de bougies, définitions de pivots (zigzag à 3 ATR), niveaux, horizons, coûts, graines. Empreintes (`git hash-object`) **[À FIGER]** pour :
-`backtest/h3.py`, `strategies/indicators.py`, `H-3_catalogue_regles_cours.md`, `H-3_snapshot_manifest.json`. Configuration par défaut codée dans `h3.py`, jamais `config.yaml`.
+Aucun paramètre n'est modifié après le gel : seuils de bougies, définitions de pivots (zigzag à 3 ATR), niveaux, horizons, coûts, graines. Empreintes (`git hash-object`) **figées le 5 nov. 2026, avant toute exécution du développement** :
+
+| Fichier | Empreinte |
+|---|---|
+| `agent/orionx/backtest/h3.py` (détecteurs, SAR) | `dae5a355d0d8a55f933f754b7e9a7be23a8cbc52` |
+| `agent/orionx/backtest/h3_bench.py` (banc, jugements) | `401aed2d46146bbc98a3da0d416ce67888fa86f0` |
+| `agent/orionx/backtest/h3_run.py` (exécution unique) | `0e33416d810e28650351d42d1ad357f324c5f74a` |
+| `agent/orionx/backtest/h3_freeze.py` (gel) | `339c9832d54183417029e815efbcc7d5cdd786dd` |
+| `agent/orionx/strategies/indicators.py` | `0f6d9c09eed41d1d31ceda065543f98b4e38dbec` |
+| `docs/validation/H-3_catalogue_regles_cours.md` | `111a0988280a3fdb5a4a5feac7e0719526bb2481` |
+| `docs/validation/H-3_snapshot_manifest.json` | `5b85043f674f02f78a2b1d869de5b4d2e41d22f8` |
+
+Configuration par défaut codée dans `h3.py`, jamais `config.yaml`. Toute modification de l'un de ces fichiers après l'exécution invalide le verdict.
+
+**Précisions de mise en œuvre** (écrites avant toute mesure ; elles complètent §4 et §5 sans en changer les seuils) :
+- Famille e : un étranglement qui dure compte **une seule fois** (on ne garde que sa première bougie ; aucun autre signal dans les 12 bougies précédentes). Rapport de volatilité >= 1,20 sur au moins 100 épisodes par symbole.
+- Famille b : une entrée = un contact avec un niveau (Fibonacci ou témoin) après une jambe >= 3 ATR ; ordre limite rempli au niveau ; les niveaux déjà franchis entre le pivot et sa confirmation sont exclus (pas d'anticipation).
+- Famille f : SAR de Wilder (pas 0,02, maximum 0,20) ; entrée à l'ouverture suivant une inversion du SAR si la pente de la MMS 100 (sur 10 jours) et le RSI(14) (> 50 ou < 50) vont dans le même sens ; stop = SAR en vigueur ; sortie au SAR à l'inversion suivante (au plus défavorable entre le SAR et l'ouverture en cas d'écart) ; une position à la fois par symbole ;
+  distance de risque plancher 0,5 ATR pour le dimensionnement ; tirages aléatoires : mêmes symboles, sens, durées et distances de risque, dates tirées au hasard.
+- Une seule exécution : un marqueur `h3_dev_run.json` interdit de relancer. Un refus (empreinte différente) n'épuise pas l'exécution.
 
 ## 9. Ordre des opérations
 
 1. [x] **Écrire ce protocole** et le commiter (ce document, avant toute donnée et tout code d'essai).
-2. [ ] **Lire la commission réelle** d'IC Markets : un trade démo de 0,01 lot (ouverture puis fermeture) sur le compte IC Markets, lecture du champ « commission » de la transaction.
-3. [ ] **Geler les données** : lecture de l'historique des 5 symboles en H1 et D1, enregistrement en fichiers, calcul des empreintes, remplissage des champs **[À FIGER]** ci-dessus, commit distinct.
-4. [ ] **Coder** les détecteurs et le banc d'essai (`h3.py`) : fonctions pures, testées sur des données synthétiques (par exemple : un avalement construit à la main est détecté, un hasard pur ne passe pas).
+2. [x] **Lire la commission réelle** : fait le 4 nov. 2026 (3,50 USD par lot et par côté, §3), par un trade démo de 0,01 lot (`demo-trade`) puis de 1 lot.
+3. [x] **Geler les données** : fait le 4 nov. 2026 (commande `h3-freeze`, 10 séries, aucune année suspecte), manifeste commité dans un commit distinct, **avant** toute mesure.
+4. [x] **Coder** les détecteurs et le banc d'essai (`h3.py`) : fonctions pures, testées sur des données synthétiques (par exemple : un avalement construit à la main est détecté, un hasard pur ne passe pas).
    **Sans toucher** aux stratégies existantes ni aux garde-fous du risque.
-5. [ ] **Vérifier** que le banc refuse des données dont l'empreinte diffère, puis **exécuter le développement une seule fois**, publier la sortie complète quel qu'elle soit.
+5. [ ] (code figé le 5 nov. 2026) **Vérifier** que le banc refuse des données dont l'empreinte diffère, puis **exécuter le développement une seule fois**, publier la sortie complète quel qu'elle soit.
 6. [ ] Appliquer §6 (réserve) seulement si une famille a passé §5.
 
 ## 10. Décision

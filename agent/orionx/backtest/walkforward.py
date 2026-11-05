@@ -33,9 +33,7 @@ class RandomReference:
 
 def random_reference(bars: Sequence[Bar], spec: SymbolSpec, symbol: str, strategy_net: float, runs: int = 20,
                      **bt_kwargs: Any) -> RandomReference:  # fmt: skip
-    results: list[BacktestResult] = [
-        run_backtest(bars, RandomEntry(seed=s), spec, symbol, **bt_kwargs) for s in range(runs)
-    ]
+    results: list[BacktestResult] = [run_backtest(bars, RandomEntry(seed=s), spec, symbol, **bt_kwargs) for s in range(runs)]
     nets = [r.net_profit for r in results]
     pfs = [r.profit_factor for r in results if r.profit_factor != float("inf")]
     return RandomReference(
