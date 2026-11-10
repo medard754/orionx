@@ -1,0 +1,53 @@
+H-3 développement - 2026-11-06 06:51 UTC - serveur Pepperstone-Demo - commission 3.5 USD/lot/côté
+Symboles de décision : GBPUSD, USDJPY, AUDUSD, USDCAD ; information seulement : EURUSD
+  GBPUSD H1 développement : 96861 bougies (2010-09-27 -> 2026-05-05), réserve non lue : 3145 bougies
+  USDJPY H1 développement : 96860 bougies (2010-09-28 -> 2026-05-05), réserve non lue : 3145 bougies
+  AUDUSD H1 développement : 97165 bougies (2010-09-09 -> 2026-05-05), réserve non lue : 3145 bougies
+  USDCAD H1 développement : 96953 bougies (2010-09-23 -> 2026-05-05), réserve non lue : 3145 bougies
+  EURUSD H1 développement : 97007 bougies (2010-09-20 -> 2026-05-05), réserve non lue : 3145 bougies
+
+== Famille a chandeliers ==
+  variantes retenues (>= 100 signaux) : 36
+  meilleure : ('trois_soldats', 4), 617 signaux, rendement net moyen +0.0635 ATR, p = 0.7822
+  blocs positifs 3/4 (-0.07, 0.1366, 0.0733, 0.066) ; symboles positifs 4/4 {'GBPUSD': 0.1473, 'USDJPY': 0.0296, 'AUDUSD': 0.0801, 'USDCAD': 0.0173}
+  [information EURUSD, hors décision] meilleure ('trois_soldats', 24), 137 signaux, +0.6460 ATR, p = 0.1259
+  critères : {'au_moins_100_signaux': True, 'rendement_net_positif': True, 'meilleur_que_97_5_pct_du_hasard': False, 'positif_dans_3_blocs_sur_4': True, 'positif_sur_3_symboles_sur_4': True}
+  -> ÉCHEC
+
+== Famille c figures ==
+  variantes retenues (>= 100 signaux) : 8
+  meilleure : ('tete_epaules', 24), 301 signaux, rendement net moyen +0.0528 ATR, p = 0.8032
+  blocs positifs 1/4 (-0.1804, -0.1302, 0.601, -0.1334) ; symboles positifs 3/4 {'GBPUSD': 0.0107, 'USDJPY': 0.1569, 'AUDUSD': 0.1473, 'USDCAD': -0.0745}
+  [information EURUSD, hors décision] meilleure ('double_sommet', 24), 246 signaux, -0.0603 ATR, p = 0.9381
+  critères : {'au_moins_100_signaux': True, 'rendement_net_positif': True, 'meilleur_que_97_5_pct_du_hasard': False, 'positif_dans_3_blocs_sur_4': False, 'positif_sur_3_symboles_sur_4': True}
+  -> ÉCHEC
+
+== Famille d divergences RSI ==
+  variantes retenues (>= 100 signaux) : 8
+  meilleure : ('divergence_directe_haussiere', 24), 1635 signaux, rendement net moyen +0.0097 ATR, p = 0.7043
+  blocs positifs 2/4 (0.0574, -0.2119, -0.1798, 0.3915) ; symboles positifs 1/4 {'GBPUSD': -0.152, 'USDJPY': -0.0697, 'AUDUSD': -0.1626, 'USDCAD': 0.3916}
+  [information EURUSD, hors décision] meilleure ('divergence_cachee_baissiere', 24), 464 signaux, +0.3041 ATR, p = 0.1558
+  critères : {'au_moins_100_signaux': True, 'rendement_net_positif': True, 'meilleur_que_97_5_pct_du_hasard': False, 'positif_dans_3_blocs_sur_4': False, 'positif_sur_3_symboles_sur_4': False}
+  -> ÉCHEC
+
+== Famille b Fibonacci contre niveaux témoins ==
+  entrées Fibonacci 11523, témoins 14890 ; rendement moyen Fibonacci -0.0900, témoins -0.0658 ; p = 0.9770
+  blocs positifs 0/4 ; symboles positifs 0/4
+  critères : {'au_moins_100_entrees_fibonacci': True, 'rendement_net_positif': False, 'meilleur_que_les_niveaux_temoins_p_0_025': False, 'positif_dans_3_blocs_sur_4': False, 'positif_sur_3_symboles_sur_4': False}
+  -> ÉCHEC
+
+== Famille e étranglement de Bollinger (volatilité) ==
+  GBPUSD: 1954 épisodes, rapport de volatilité moyen 1.106, p = 1.0000 -> échec
+  USDJPY: 1783 épisodes, rapport de volatilité moyen 0.906, p = 1.0000 -> échec
+  AUDUSD: 1817 épisodes, rapport de volatilité moyen 0.959, p = 1.0000 -> échec
+  USDCAD: 1927 épisodes, rapport de volatilité moyen 1.069, p = 1.0000 -> échec
+  symboles qui passent : 0/4 (3 requis) -> ÉCHEC
+
+== Famille f plan de trading D1 (MMS 100, RSI, SAR) ==
+  trades 573, résultat net -5.2 R, profit factor 0.977, PF par bloc (0.691, 1.331, 1.084, 0.836)
+  drawdown maximal à 0,5 % par trade : 13.5 % ; tirages aléatoires meilleurs : 111/200
+  critères : {'au_moins_100_trades': True, 'pf_superieur_1_2_dans_3_blocs_sur_4': False, 'drawdown_inferieur_10_pct': False, 'meilleur_que_97_5_pct_des_tirages': False}
+  -> ÉCHEC
+
+== Décision (protocole §6) ==
+  Aucune famille ne passe : NO-GO. La réserve reste FERMÉE.

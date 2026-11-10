@@ -222,6 +222,11 @@ function explainRow(s) {
   return tr;
 }
 
+function remaining(iso) {
+  const sec = Math.max(0, Math.round((new Date(iso).getTime() - Date.now()) / 1000));
+  return sec >= 90 ? `${Math.floor(sec / 60)} min` : `${sec} s`;
+}
+
 function renderSignals(list) {
   const body = $("signals");
   body.replaceChildren();
@@ -242,7 +247,7 @@ function renderSignals(list) {
     actions.append(box);
     const side = el("td"); side.append(el("span", s.side === "buy" ? "ACHAT" : "VENTE", `badge ${s.side}`));
     tr.append(el("td", s.symbol, "sym"), side, el("td", price(s.sl), "num"), el("td", price(s.tp), "num"),
-      el("td", s.strategy), el("td", s.expired ? "expiré" : time(s.valid_until), s.expired ? "neg" : "num"), actions);
+      el("td", s.strategy), el("td", s.expired ? "expiré" : `${time(s.valid_until)} (reste ${remaining(s.valid_until)})`, s.expired ? "neg" : "num"), actions);
     tr.title = s.rationale.join(" · ");
     body.append(tr, explainRow(s));
   }
@@ -289,6 +294,31 @@ function connectEvents(delay = 1000) {
   ws.onopen = () => { pill("live", "en direct", "ok"); delay = 1000; };
   ws.onmessage = (m) => { try { addEvent(JSON.parse(m.data)); } catch (_) { /* message illisible ignoré */ } };
   ws.onclose = () => { pill("live", "reconnexion…", "warn"); setTimeout(() => connectEvents(Math.min(delay * 2, 30000)), delay); };
+}
+
+// --- Radar des signaux ---------------------------------------------------------------------------
+function renderRadar(data) {
+  const body = $("radar");
+  body.replaceChildren();
+  let rows = 0;
+  for (const s of data) {
+    for (const r of s.strategies) {
+      rows += 1;
+      const tr = el("tr");
+      const missing = r.checks.filter((c) => !c.ok).map((c) => c.label);
+      const state = !r.applies ? r.regime_note : r.ready ? "TOUTES LES CONDITIONS SONT REMPLIES" : missing.join(" · ");
+      tr.append(el("td", s.symbol, "sym"), el("td", r.strategy), el("td", r.side),
+        el("td", `${r.done}/${r.total}`, r.ready ? "pos num" : "num"), el("td", state, r.ready ? "pos" : r.applies ? "" : "hint"));
+      tr.title = r.checks.map((c) => `${c.ok ? "✔" : "✘"} ${c.label} (${c.detail})`).join(String.fromCharCode(10));
+      body.append(tr);
+    }
+  }
+  if (!rows) { const tr = el("tr"); const td = el("td", "En attente de la première évaluation…", "empty"); td.colSpan = 5; tr.append(td); body.append(tr); }
+}
+
+async function refreshRadar() {
+  if (sessionLost) return;
+  try { renderRadar(await api("/api/radar")); } catch (_) { /* l'état général affiche déjà la panne */ }
 }
 
 // --- Analyse du marché (onglets) ----------------------------------------------------------------
@@ -482,6 +512,8 @@ for (const t of tabs) t.addEventListener("click", () => history.replaceState(nul
 if (tabFromHash()) selectTab(tabFromHash(), false);
 refreshAnalysis();
 setInterval(refreshAnalysis, 5000);
+refreshRadar();
+setInterval(refreshRadar, 5000);
 
 // --- Ticket d'ordre guidé -----------------------------------------------------------------------------
 const ticketBody = () => ({

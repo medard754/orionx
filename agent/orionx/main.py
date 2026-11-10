@@ -14,6 +14,7 @@
   python -m orionx.main backtest          # backtest de la stratégie sur l'historique MT5 (lecture seule)
   python -m orionx.main backtest --h1     # protocole H-1/V-3 : développement seul (docs/validation/H-1_protocole.md)
   python -m orionx.main backtest --h2     # protocole H-2 : développement seul (docs/validation/H-2_protocole.md)
+  python -m orionx.main backtest --h3     # protocole H-3 : développement, UNE seule exécution (docs/validation/H-3_protocole.md)
   python -m orionx.main risk-set --profile moderate   # changer de profil de risque (hausse = délai de 24 h)
   python -m orionx.main risk-status       # configuration de risque active / en attente
   python -m orionx.main risk-check --symbol EURUSD --side buy   # que déciderait le risque ? (aucun ordre)
@@ -407,6 +408,60 @@ def audit_cmd(tail: bool) -> int:
     return 0 if r.ok else 1
 
 
+def h3_freeze_cmd(symbols: str | None, commission: float | None) -> int:
+    """H-3 : gèle l'historique du courtier (fichiers dans data/h3/, manifeste d'empreintes dans docs/validation/). Lecture seule."""
+    import json
+
+    from orionx.backtest import h3_freeze as fz
+
+    try:
+        import MetaTrader5 as mt5
+    except ImportError:
+        print("MetaTrader5 non installé.")
+        return 2
+    if not mt5.initialize(timeout=60000):
+        print(f"MetaTrader 5 injoignable : {mt5.last_error()}")
+        return 2
+    try:
+        account = mt5.account_info()
+        if account is None or account.trade_mode != mt5.ACCOUNT_TRADE_MODE_DEMO:
+            print("REFUS : le gel ne se fait que sur un compte démo.")
+            return 3
+        manifest = fz.freeze(
+            fz.mt5_fetcher(), DATA_DIR / "h3", symbols=tuple(symbols.split(",")) if symbols else fz.DEFAULT_SYMBOLS,
+            server=str(account.server), commission_per_lot_per_side=commission,
+        )  # fmt: skip
+    finally:
+        mt5.shutdown()
+    suspects = {f["file"]: f["suspect_years"] for f in manifest["files"] if f["suspect_years"]}
+    if suspects:
+        print(f"GEL REFUSÉ : années suspectes (lecture incomplète ?) {suspects}. Relancez ; rien n'est écrit dans le manifeste.")
+        return 4
+    target = Path(__file__).resolve().parents[2] / "docs" / "validation" / "H-3_snapshot_manifest.json"
+    target.write_text(json.dumps(manifest, indent=1, ensure_ascii=False) + chr(10), encoding="utf-8")
+    print(f"Manifeste écrit : {target} ({len(manifest['files'])} séries). À commiter AVANT toute mesure.")
+    return 0
+
+
+def h3_cmd() -> int:
+    """H-3 : exécute le développement UNE fois, après vérification des empreintes du gel. Aucune connexion MT5 : lit les fichiers gelés."""
+    import json
+
+    from orionx.backtest import h3_run
+
+    docs = Path(__file__).resolve().parents[2] / "docs" / "validation"
+    manifest = json.loads((docs / "H-3_snapshot_manifest.json").read_text(encoding="utf-8"))
+    try:
+        lines, _any = h3_run.run_development(DATA_DIR / "h3", manifest)
+    except h3_run.H3Refused as exc:
+        print(f"REFUS : {exc}")
+        return 3
+    target = docs / "H-3_sortie_developpement.txt"
+    target.write_text(chr(10).join(lines) + chr(10), encoding="utf-8")
+    print(f"Sortie complète enregistrée : {target} (à commiter telle quelle).")
+    return 0
+
+
 async def signals_report_cmd(cost_pips: float, horizon: int) -> int:
     """Rejoue les signaux du journal sur les bougies suivantes (lecture seule : aucun ordre, aucune écriture)."""
     from orionx.audit.log import AuditLog
@@ -655,7 +710,7 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="orionx")
     commands = ["simulate", "mt5-check", "demo-trade", "run", "kill", "clear-kill", "audit-verify", "audit-tail",
                 "backtest", "state", "risk-set", "risk-status", "risk-check", "alert-setup", "alert-test", "dashboard",
-                "demo-dashboard", "signals-report"]  # fmt: skip
+                "demo-dashboard", "signals-report", "h3-freeze"]  # fmt: skip
     parser.add_argument("command", choices=commands)
     parser.add_argument("--yes", action="store_true", help="demo-trade : ne pas demander confirmation")
     parser.add_argument("--hold", type=float, default=10.0, help="demo-trade : secondes avant fermeture")
@@ -679,6 +734,9 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--csv", type=Path, default=None, help="backtest : exporte les trades en CSV")
     parser.add_argument("--h1", action="store_true", help="backtest : protocole H-1/V-3 (réserve de 6 mois jamais évaluée ici)")
     parser.add_argument("--h2", action="store_true", help="backtest : protocole H-2 (docs/validation/H-2_protocole.md)")
+    parser.add_argument("--h3", action="store_true", help="backtest : protocole H-3 (une seule exécution du développement)")
+    parser.add_argument("--symbols", default=None, help="h3-freeze : symboles séparés par des virgules")
+    parser.add_argument("--commission", type=float, default=None, help="h3-freeze : commission mesurée, en USD par lot et par côté")
     parser.add_argument("--cost-pips", type=float, default=1.0, help="signals-report : coût supplémentaire par trade, en pips")
     parser.add_argument("--horizon", type=int, default=48, help="signals-report : bougies maximum avant « non résolu »")
     parser.add_argument("--visible", action="store_true", help="alert-setup : saisie du jeton visible (si le collage invisible échoue)")
@@ -712,9 +770,13 @@ def main(argv: list[str] | None = None) -> int:
         return risk_cmd(args.command, args.profile)
     if args.command == "state":
         return asyncio.run(state_cmd(cfg))
+    if args.command == "h3-freeze":
+        return h3_freeze_cmd(args.symbols, args.commission)
     if args.command == "signals-report":
         return asyncio.run(signals_report_cmd(args.cost_pips, args.horizon))
     if args.command == "backtest":
+        if args.h3:
+            return h3_cmd()
         if args.h1:
             return asyncio.run(h1_cmd(args.symbol, args.open_holdout, cfg))
         if args.h2:

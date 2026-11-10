@@ -232,6 +232,11 @@ def create_app(agent: Agent, token: str, kill_flag: Path, feed: EventFeed | None
         """Analyse de marché de chaque symbole (tendance, momentum, volatilité, niveaux, séance, décision). Lecture seule."""
         return agent.analysis()
 
+    @app.get("/api/radar", dependencies=auth)
+    async def radar() -> list[dict[str, Any]]:
+        """Radar de signaux : pour chaque symbole et stratégie, les conditions remplies et manquantes. Lecture seule."""
+        return agent.radar()
+
     def signal_out(p: Any, now: datetime) -> SignalOut:
         state, preview = agent.states.get(p.symbol), agent.preview_signal(p)
         return SignalOut(

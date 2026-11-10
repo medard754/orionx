@@ -32,7 +32,7 @@ class TrendPullback:
     timeframe = "H1"
 
     def __init__(self, fast: int = 20, slow: int = 50, atr_n: int = 14, rsi_n: int = 14, sl_atr: float = 1.5,
-                 rr: float = 2.0, slope_bars: int = 5, touch_bars: int = 3, valid_seconds: float = 90.0) -> None:  # fmt: skip
+                 rr: float = 2.0, slope_bars: int = 5, touch_bars: int = 3, valid_seconds: float = 600.0) -> None:  # fmt: skip
         self.fast, self.slow, self.atr_n, self.rsi_n = fast, slow, atr_n, rsi_n
         self.sl_atr, self.rr, self.slope_bars, self.touch_bars, self.valid_seconds = sl_atr, rr, slope_bars, touch_bars, valid_seconds
         self.min_bars = slow * 2 + 20

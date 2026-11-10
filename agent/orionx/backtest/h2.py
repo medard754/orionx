@@ -29,5 +29,7 @@ def check_snapshot(digest: str, expected: str = EXPECTED_SNAPSHOT_SHA) -> str | 
     """Message d'erreur si les données ne sont pas celles du protocole, sinon None."""
     if digest == expected:
         return None
-    return (f"Les données ne sont pas celles du protocole H-2 (empreinte {digest}, attendue {expected}) : refus de calculer. "
-            "Restaurez l'instantané d'origine (data/h1_EURUSD_H1.csv) au lieu d'en créer un autre.")
+    return (
+        f"Les données ne sont pas celles du protocole H-2 (empreinte {digest}, attendue {expected}) : refus de calculer. "
+        "Restaurez l'instantané d'origine (data/h1_EURUSD_H1.csv) au lieu d'en créer un autre."
+    )
