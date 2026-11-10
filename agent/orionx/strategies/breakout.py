@@ -18,7 +18,7 @@ class Breakout:
     timeframe = "H1"
 
     def __init__(self, lookback: int = 20, sl_atr: float = 1.5, rr: float = 2.0, min_range_atr: float = 1.0,
-                 valid_seconds: float = 90.0) -> None:  # fmt: skip
+                 valid_seconds: float = 600.0) -> None:  # fmt: skip
         self.lookback, self.sl_atr, self.rr, self.min_range_atr, self.valid_seconds = lookback, sl_atr, rr, min_range_atr, valid_seconds
         self.min_bars = lookback + 40
 

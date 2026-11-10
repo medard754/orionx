@@ -48,6 +48,7 @@ from orionx.core.events import (
 from orionx.core.models import AccountState, Bar, OrderResult, Position, Side, SymbolSpec, TradeProposal, utcnow
 from orionx.data.engine import MarketData, MarketStore
 from orionx.decision.engine import Candidate, DecisionEngine, EngineResult, StrategyEntry
+from orionx.decision.radar import build_radar
 from orionx.execution.executor import Executor
 from orionx.monitoring.flag import read_kill_flag
 from orionx.monitoring.killswitch import KillSwitch
@@ -122,6 +123,7 @@ class Agent:
         self._state_bar: dict[str, datetime] = {}
         self.analysis_bars: dict[str, list[Bar]] = {}  # bougies H1 de la dernière analyse (onglets du dashboard)
         self.last_notes: dict[str, tuple[datetime, tuple[str, ...]]] = {}  # dernières notes du moteur de décision
+        self.radar_state: dict[str, tuple[datetime, list[dict[str, Any]]]] = {}  # radar de signaux (lecture seule), par symbole
         self.server_offset: timedelta | None = None
         self.signer = ApprovalSigner(clock=clock)
         self.risk = RiskManager(risk_cfg, self.signer, max_data_age_seconds=cfg.max_data_age_seconds, clock=clock,
@@ -177,6 +179,27 @@ class Agent:
             ))  # fmt: skip
         return out
 
+    def _update_radar(self, sym: str, bars: list[Bar]) -> None:
+        """Radar (lecture seule) : ne peut ni proposer ni bloquer ; une erreur ici ne doit jamais gêner l'agent."""
+        if self.engine is None:
+            return
+        try:
+            state = self.states.get(sym)
+            regime = state.regime.value if state is not None else None
+            entries = [(e.strategy.name.removesuffix("_v1"), {r.value for r in e.regimes} if e.regimes is not None else None)
+                       for e in self.engine.entries if e.enabled]  # fmt: skip
+            self.radar_state[sym] = (self._clock(), build_radar(sym, bars, regime, entries))
+        except Exception:  # noqa: BLE001
+            log.exception("Radar indisponible pour %s", sym)
+
+    def radar(self) -> list[dict[str, Any]]:
+        """Radar de signaux de chaque symbole : conditions remplies / manquantes par stratégie (dashboard, lecture seule)."""
+        out = []
+        for sym in self.cfg.symbols:
+            at, rows = self.radar_state.get(sym, (None, []))
+            out.append({"symbol": sym, "evaluated_at": at.isoformat() if at else None, "strategies": rows})
+        return out
+
     def _purge_expired(self) -> None:
         now = self._now_utc()
         for pid in [pid for pid, p in self.pending.items() if p.valid_until <= now]:
@@ -188,8 +211,9 @@ class Agent:
         if self.aborted:
             raise TicketError(f"L'agent est arrêté ({self.aborted}) : aucun ticket possible.")
         if self.autonomy == "signals_only":
-            raise TicketError("L'agent est en mode signaux seuls : il n'envoie jamais d'ordre. "
-                              "Passez en semi-auto pour utiliser le ticket.")
+            raise TicketError(
+                "L'agent est en mode signaux seuls : il n'envoie jamais d'ordre. Passez en semi-auto pour utiliser le ticket."
+            )
         if symbol not in self.cfg.symbols:
             raise TicketError(f"Symbole non suivi par l'agent : {symbol} (disponibles : {', '.join(self.cfg.symbols)}).")
         if side not in ("buy", "sell"):
@@ -419,6 +443,7 @@ class Agent:
         self._last_bar[sym] = recent[-1].time
         bars = await self.gw.get_bars(sym, self.engine.timeframe, self.engine.min_bars + 5)
         res = self.engine.evaluate(sym, bars, tick, self._clock(), positions, self.states.get(sym))
+        self._update_radar(sym, bars)
         if res.notes:
             self.last_notes[sym] = (self._clock(), tuple(res.notes))
             await self.bus.publish(DecisionNote(sym, res.notes))

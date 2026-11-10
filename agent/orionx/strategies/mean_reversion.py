@@ -19,7 +19,7 @@ class MeanReversion:
     timeframe = "H1"
 
     def __init__(self, period: int = 20, k: float = 2.0, rsi_low: float = 30.0, rsi_high: float = 70.0,
-                 sl_atr: float = 1.5, min_rr: float = 1.0, valid_seconds: float = 90.0) -> None:  # fmt: skip
+                 sl_atr: float = 1.5, min_rr: float = 1.0, valid_seconds: float = 600.0) -> None:  # fmt: skip
         self.period, self.k, self.rsi_low, self.rsi_high = period, k, rsi_low, rsi_high
         self.sl_atr, self.min_rr, self.valid_seconds = sl_atr, min_rr, valid_seconds
         self.min_bars = period + 40
